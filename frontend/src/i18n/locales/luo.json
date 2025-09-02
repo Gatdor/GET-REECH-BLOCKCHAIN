@@ -1,0 +1,25 @@
+{
+  "market": {
+    "title": "Ber marach",
+    "filters": {
+      "species": "Yier giach",
+      "priceMin": "Ber matin (KES)",
+      "priceMax": "Ber maduong (KES)",
+      "location": "Yier kuma"
+    },
+    "quantity": "Kwan",
+    "price": "Ber",
+    "location": "Kuma",
+    "order": "Ket odhi",
+    "orderQuantity": "Kwan mar odhi",
+    "phone": "Namba mar M-Pesa",
+    "errors": {
+      "fetch": "Ok nyal pogo cham",
+      "order": "Ok nyal keto odhi",
+      "phoneRequired": "Namba mar sim ni dwaro"
+    },
+    "success": {
+      "order": "Odhi oseketo maber"
+    }
+  }
+}

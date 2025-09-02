@@ -1,0 +1,266 @@
+{
+  "app": {
+    "logout": "Ondoka",
+    "error": "Hitilafu: {message}",
+    "retry": "Jaribu Tena"
+  },
+  "register": {
+    "title": "Jisajili",
+    "email": "Barua Pepe",
+    "password": "Nenosiri",
+    "name": "Jina",
+    "nationalId": "Kitambulisho cha Taifa",
+    "phone": "Namba ya Simu",
+    "role": "Jukumu",
+    "button": "Jisajili",
+    "submitting": "Inasajili...",
+    "success": {
+      "emailConfirmation": "Usajili umefaulu! Tafadhali angalia barua pepe yako ili kuthibitisha akaunti yako."
+    },
+    "errors": {
+      "emailRequired": "Barua pepe inahitajika",
+      "invalidEmail": "Muundo wa barua pepe si sahihi",
+      "passwordRequired": "Nenosiri linapaswa kuwa na angalau herufi 6",
+      "nameRequired": "Jina linahitajika",
+      "nationalIdRequired": "Kitambulisho cha Taifa kinapaswa kuwa na angalau tarakimu 8",
+      "invalidPhone": "Namba ya simu inapaswa kuwa katika muundo +2547XXXXXXXX",
+      "invalidRole": "Jukumu lisilo sahihi limechaguliwa",
+      "offline": "Hali ya nje ya mtandao: Usajili umehifadhiwa kwa usawazishaji",
+      "timeout": "Usajili umekwisha muda. Tafadhali jaribu tena.",
+      "generic": "Hitilafu imetokea wakati wa usajili"
+    },
+    "tooltips": {
+      "email": "Ingiza anwani ya barua pepe sahihi",
+      "password": "Nenosiri linapaswa kuwa na angalau herufi 6",
+      "name": "Ingiza jina lako kamili",
+      "nationalId": "Ingiza namba yako ya kitambulisho cha taifa",
+      "phone": "Ingiza namba yako ya simu (mfano, +2547XXXXXXXX)",
+      "role": "Chagua jukumu lako: mvuvi au msimamizi"
+    },
+    "placeholders": {
+      "email": "Ingiza barua pepe yako",
+      "password": "Ingiza nenosiri lako",
+      "name": "Ingiza jina lako",
+      "nationalId": "Ingiza kitambulisho chako cha taifa",
+      "phone": "Ingiza namba yako ya simu"
+    },
+    "roles": {
+      "fisherman": "Mvuvi",
+      "admin": "Msimamizi"
+    }
+  },
+  "login": {
+    "title": "Ingia",
+    "email": "Barua Pepe",
+    "password": "Nenosiri",
+    "button": "Ingia",
+    "submitting": "Inaingia...",
+    "cancel": "Ghairi",
+    "resendConfirmation": "Tuma Tena Barua Pepe ya Uthibitisho",
+    "success": {
+      "resendConfirmation": "Barua pepe ya uthibitisho imetumwa tena. Tafadhali angalia kikasha chako.",
+      "login": "Umeingia kwa mafanikio kama {role}."
+    },
+    "errors": {
+      "emailRequired": "Barua pepe inahitajika",
+      "invalidEmail": "Muundo wa barua pepe si sahihi",
+      "passwordRequired": "Nenosiri linahitajika",
+      "emailNotConfirmed": "Tafadhali thibitisha barua pepe yako kabla ya kuingia.",
+      "invalidCredentials": "Barua pepe au nenosiri si sahihi",
+      "profileFetch": "Imeshindwa kupata wasifu wa mtumiaji. Tafadhali jaribu tena.",
+      "resendFailed": "Imeshindwa kutuma tena barua pepe ya uthibitisho. Tafadhali jaribu tena.",
+      "offline": "Hali ya nje ya mtandao: Tafadhali unganisha kwenye mtandao",
+      "timeout": "Muda wa kuingia umeisha. Tafadhali jaribu tena.",
+      "cancelled": "Kuingia kumeghairiwa.",
+      "generic": "Hitilafu imetokea wakati wa kuingia"
+    },
+    "tooltips": {
+      "email": "Ingiza anwani yako ya barua pepe iliyosajiliwa",
+      "password": "Ingiza nenosiri lako"
+    },
+    "placeholders": {
+      "email": "Ingiza barua pepe yako",
+      "password": "Ingiza nenosiri lako"
+    }
+  },
+  "home": {
+    "title": "Nyumbani",
+    "subtitle": "Fuatilia, dhibiti, na uuze samaki wako kwa urahisi.",
+    "welcome": "Karibu, {role}!",
+    "register": "Jisajili",
+    "login": "Ingia",
+    "logCatch": "Rekodi Samaki",
+    "dashboard": "Dashibodi",
+    "exploreMarket": "Chunguza Soko",
+    "recentListings": "Orodha za Hivi Karibuni za Samaki",
+    "listingTitle": "{species} (Batchi ID: {batchId})",
+    "weight": "Uzito: {weight} kg",
+    "price": "Bei: ${price}",
+    "qualityScore": "Alama za Ubora: {score}%",
+    "imageAlt": "Picha ya {species}",
+    "loading": "Inapakia orodha...",
+    "noListings": "Hakuna orodha za hivi karibuni zinazopatikana",
+    "errors": {
+      "invalidData": "Baadhi ya data ya rekodi za samaki si sahihi",
+      "unauthenticated": "Tafadhali ingia ili uone orodha",
+      "offline": "Hali ya nje ya mtandao: Orodha hazipatikani",
+      "generic": "Hitilafu imetokea wakati wa kupakia orodha"
+    },
+    "tooltips": {
+      "register": "Fungua akaunti mpya",
+      "login": "Ingia kwenye akaunti yako",
+      "logCatch": "Rekodi samaki mpya",
+      "dashboard": "Dhibiti samaki na watumiaji",
+      "market": "Vinjari soko"
+    },
+    "footer": {
+      "about": "Kuhusu",
+      "privacy": "Sera ya Faragha"
+    }
+  },
+  "profile": {
+    "title": "Wasifu",
+    "welcome": "Karibu, {role}!",
+    "name": "Jina",
+    "nationalId": "Kitambulisho cha Taifa",
+    "phone": "Namba ya Simu",
+    "role": "Jukumu",
+    "submit": "Sasisha Wasifu",
+    "submitting": "Inasasisha...",
+    "success": "Wasifu umesasishwa kwa mafanikio.",
+    "successOffline": "Sasisho la wasifu limehifadhiwa kwa usawazishaji unapokuwa mtandaoni.",
+    "errors": {
+      "nameRequired": "Jina linahitajika",
+      "invalidNationalId": "Kitambulisho cha Taifa kinapaswa kuwa na angalau tarakimu 8",
+      "invalidPhone": "Namba ya simu inapaswa kuwa katika muundo +2547XXXXXXXX",
+      "generic": "Hitilafu imetokea wakati wa kusasisha wasifu wako"
+    },
+    "tooltips": {
+      "name": "Ingiza jina lako kamili",
+      "nationalId": "Ingiza namba yako ya kitambulisho cha taifa",
+      "phone": "Ingiza namba yako ya simu (mfano, +2547XXXXXXXX)",
+      "role": "Jukumu lako lililokabidhiwa"
+    },
+    "placeholders": {
+      "name": "Ingiza jina lako",
+      "nationalId": "Ingiza kitambulisho chako cha taifa",
+      "phone": "Ingiza namba yako ya simu"
+    },
+    "roles": {
+      "fisherman": "Mvuvi",
+      "admin": "Msimamizi"
+    }
+  },
+  "logCatch": {
+    "title": "Rekodi Samaki",
+    "species": "Aina ya Samaki",
+    "weight": "Uzito (kg)",
+    "price": "Bei ($)",
+    "qualityScore": "Alama za Ubora (0-100%)",
+    "images": "Pakia Picha",
+    "submit": "Wasilisha Samaki",
+    "submitting": "Inawasilisha...",
+    "success": "Samaki wamerekodiwa kwa mafanikio.",
+    "successOffline": "Samaki wamehifadhiwa kwa usawazishaji unapokuwa mtandaoni.",
+    "errors": {
+      "speciesRequired": "Aina ya samaki inahitajika",
+      "invalidWeight": "Uzito unapaswa kuwa namba chanya",
+      "invalidPrice": "Bei inapaswa kuwa namba chanya",
+      "invalidQualityScore": "Alama za ubora zinapaswa kuwa kati ya 0 na 100",
+      "imageUploadFailed": "Imeshindwa kupakia picha",
+      "generic": "Hitilafu imetokea wakati wa kurekodi samaki"
+    },
+    "tooltips": {
+      "species": "Ingiza aina ya samaki",
+      "weight": "Ingiza uzito kwa kilogramu",
+      "price": "Ingiza bei kwa USD",
+      "qualityScore": "Ingiza alama za ubora kati ya 0 na 100",
+      "images": "Pakia picha za samaki"
+    },
+    "placeholders": {
+      "species": "Ingiza aina ya samaki",
+      "weight": "Ingiza uzito",
+      "price": "Ingiza bei",
+      "qualityScore": "Ingiza alama za ubora"
+    }
+  },
+  "market": {
+    "title": "Soko",
+    "search": "Tafuta Orodha",
+    "species": "Aina ya Samaki",
+    "weight": "Uzito (kg)",
+    "price": "Bei ($)",
+    "qualityScore": "Alama za Ubora (%)",
+    "listingTitle": "{species} (Batchi ID: {batchId})",
+    "imageAlt": "Picha ya {species}",
+    "loading": "Inapakia soko...",
+    "noListings": "Hakuna orodha zinazopatikana",
+    "errors": {
+      "invalidData": "Baadhi ya orodha si sahihi",
+      "offline": "Hali ya nje ya mtandao: Soko halipatikani",
+      "generic": "Hitilafu imetokea wakati wa kupakia orodha"
+    },
+    "tooltips": {
+      "search": "Tafuta samaki kwa aina au batchi ID"
+    },
+    "placeholders": {
+      "search": "Tafuta samaki..."
+    }
+  },
+  "privacy": {
+    "title": "Faragha",
+    "introduction": {
+      "title": "Utangulizi",
+      "text": "Karibu kwenye Mfumo wa Usimamizi wa Uvuvi. Tumejitolea kulinda faragha yako na kuhakikisha data yako ya kibinafsi inashughulikiwa kwa uwajibikaji."
+    },
+    "dataCollection": {
+      "title": "Ukusanyaji wa Data",
+      "text": "Tunakusanya maelezo ya kibinafsi kama jina lako, barua pepe, kitambulisho cha taifa, namba ya simu, na jukumu ili kutoa huduma zetu. Data hii inakusanywa wakati wa usajili na sasisho za wasifu."
+    },
+    "dataUsage": {
+      "title": "Matumizi ya Data",
+      "text": "Data yako inatumika kusimamia akaunti yako, kuthibitisha samaki, na kurahisisha miamala ya soko. Tunaweza pia kutumia data isiyojulikana kuboresha huduma zetu."
+    },
+    "dataSharing": {
+      "title": "Kushiriki Data",
+      "text": "Hatushiriki data yako ya kibinafsi na wahusika wa tatu isipokuwa inavyohitajika na sheria au kutimiza huduma zetu (mfano, uthibitisho wa blockchain na Pinata)."
+    },
+    "contact": {
+      "title": "Wasiliana Nasi",
+      "text": "Ikiwa una maswali kuhusu sera yetu ya faragha, tafadhali wasiliana nasi kwa support@fisheries-system.com."
+    }
+  },
+  "dashboard": {
+    "title": "Dashibodi",
+    "catchLogs": "Rekodi za Samaki",
+    "profiles": "Wasifu za Watumiaji",
+    "batchId": "Batchi ID",
+    "species": "Aina ya Samaki",
+    "weight": "Uzito (kg)",
+    "price": "Bei",
+    "status": "Hali",
+    "actions": "Vitendo",
+    "userId": "ID ya Mtumiaji",
+    "email": "Barua Pepe",
+    "name": "Jina",
+    "role": "Jukumu",
+    "approve": "Idhinisha",
+    "toggleRole": "Badili Jukumu",
+    "loading": "Inapakia...",
+    "errors": {
+      "invalidData": "Baadhi ya data ya rekodi za samaki si sahihi",
+      "offline": "Hali ya nje ya mtandao: Tafadhali unganisha kwenye mtandao",
+      "generic": "Hitilafu imetokea"
+    },
+    "tooltips": {
+      "approve": "Idhinisha rekodi hii ya samaki kwa soko",
+      "toggleRole": "Badili jukumu la mtumiaji kati ya mvuvi na msimamizi"
+    },
+    "app": {
+  "logout": "Ondoka",
+  "error": "Hitilafu: {message}",
+  "retry": "Jaribu Tena",
+  "offline": "Hali ya nje ya mtandao: Tafadhali unganisha kwenye mtandao"
+}
+  }
+}

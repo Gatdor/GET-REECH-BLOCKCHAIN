@@ -1,0 +1,15 @@
+/* src/pages/Feedback.css */
+.feedback-wrapper {
+  padding: 2.5rem;
+}
+@media (max-width: 768px) {
+  .feedback-wrapper {
+    padding: 1.5rem;
+  }
+}
+@media (max-width: 600px) {
+  .feedback-wrapper {
+    padding: 1rem;
+    font-size: 0.9rem;
+  }
+}
