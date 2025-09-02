@@ -1,7 +1,7 @@
 # Use PHP 8.1 with Node.js for Laravel Mix
 FROM php:8.1-fpm
 
-# Install system dependencies
+# Install system dependencies, including libpq-dev for PostgreSQL
 RUN apt-get update && apt-get install -y \
     git \
     curl \
@@ -12,7 +12,8 @@ RUN apt-get update && apt-get install -y \
     unzip \
     nginx \
     nodejs \
-    npm
+    npm \
+    libpq-dev
 
 # Install PHP extensions
 RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd pdo_pgsql
