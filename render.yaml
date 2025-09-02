@@ -1,0 +1,6 @@
+services:
+  - type: web
+    name: get-reech-laravel
+    env: docker
+    buildCommand: composer install --no-dev --optimize-autoloader && npm ci && npm run production && php artisan migrate --force
+    startCommand: php-fpm -D && nginx -g "daemon off;"
