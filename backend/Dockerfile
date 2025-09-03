@@ -1,5 +1,5 @@
-# Use PHP 8.1 with Node.js for Laravel Mix
-FROM php:8.1-fpm
+# Use PHP 8.2 with Node.js for Laravel Mix
+FROM php:8.2-fpm
 
 # Install system dependencies, including libpq-dev for PostgreSQL
 RUN apt-get update && apt-get install -y \
