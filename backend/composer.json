@@ -7,11 +7,13 @@
     "fruitcake/laravel-cors": "^3.0",
     "cloutier/php-ipfs-api": "^0.0.6",
     "laravel/framework": "^8.83",
-     "nesbot/carbon": "^2.62.1",
+    "nesbot/carbon": "^2.62.1",
     "supabase/supabase-php": "^0.0.3",
     "laravel/tinker": "^2.10",
     "laravel/sanctum": "^2.15",
-    "doctrine/dbal": "^2.13"
+    "doctrine/dbal": "^2.13",
+    "symfony/css-selector": "^6.0",
+    "tijsverkoyen/css-to-inline-styles": "^2.2"
   },
   "require-dev": {
     "fakerphp/faker": "^1.9.1",
