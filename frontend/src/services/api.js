@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000/api' || 'https://get-reech.onrender.com/api',
+  baseURL: import.meta.env.VITE_API_URL || 'https://get-reech.onrender.com/api',
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
@@ -11,7 +11,7 @@ const api = axios.create({
 
 api.interceptors.request.use(async (config) => {
   if (['post', 'put', 'delete'].includes(config.method)) {
-    await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/sanctum/csrf-cookie`, { withCredentials: true });
+    await axios.get(`${import.meta.env.VITE_API_URL || 'https://get-reech.onrender.com/api'}/sanctum/csrf-cookie`, { withCredentials: true });
     const xsrfToken = decodeURIComponent(
       document.cookie.split('; ').find(row => row.startsWith('XSRF-TOKEN'))?.split('=')[1] || ''
     );
