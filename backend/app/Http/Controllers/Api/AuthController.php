@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
@@ -20,22 +19,21 @@ class AuthController extends Controller
             'role' => 'required|in:admin,buyer,fisherman',
         ]);
 
-        if (!Auth::guard('web')->attempt(['email' => $request->email, 'password' => $request->password])) {
+        if (!Auth::attempt(['email' => $request->email, 'password' => $request->password])) {
             throw ValidationException::withMessages([
                 'email' => ['The provided credentials are incorrect.'],
             ]);
         }
 
-        $user = Auth::guard('web')->user();
+        $user = Auth::user();
 
         if ($user->role !== $request->role) {
-            Auth::guard('web')->logout();
+            Auth::logout();
             throw ValidationException::withMessages([
                 'role' => ['Invalid role for this user.'],
             ]);
         }
 
-        $request->session()->regenerate();
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
@@ -54,7 +52,7 @@ class AuthController extends Controller
     public function user(Request $request)
     {
         try {
-            $user = Auth::guard('web')->user() ?? $request->user();
+            $user = $request->user();
             if (!$user) {
                 return response()->json(['message' => 'Unauthenticated'], 401);
             }
@@ -80,7 +78,6 @@ class AuthController extends Controller
     public function logout(Request $request)
     {
         try {
-            // Check for authenticated user via Sanctum
             $user = $request->user();
             if ($user && method_exists($user, 'currentAccessToken') && $user->currentAccessToken()) {
                 $user->currentAccessToken()->delete();
@@ -89,19 +86,7 @@ class AuthController extends Controller
                 Log::warning('No valid Sanctum token found for logout request');
             }
 
-            // Invalidate session if it exists
-            if (Auth::guard('web')->check()) {
-                Auth::guard('web')->logout();
-                $request->session()->invalidate();
-                $request->session()->regenerateToken();
-                Log::info('Session invalidated for user: ' . ($user ? $user->email : 'unknown'));
-            } else {
-                Log::warning('No active session found for logout request');
-            }
-
-            // Clear cookies
             return response()->json(['message' => 'Logged out successfully'], 200)
-                ->withCookie(cookie()->forget('laravel_session'))
                 ->withCookie(cookie()->forget('XSRF-TOKEN'));
         } catch (\Exception $e) {
             Log::error('Logout failed: ' . $e->getMessage(), [
@@ -131,8 +116,6 @@ class AuthController extends Controller
             'national_id' => $data['national_id'],
         ]);
 
-        Auth::guard('web')->login($user);
-        $request->session()->regenerate();
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([

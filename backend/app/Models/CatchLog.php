@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -9,8 +8,12 @@ class CatchLog extends Model
 {
     use HasFactory;
 
+    protected $primaryKey = 'catch_id';
+    protected $keyType = 'string';
+    public $incrementing = false;
+
     protected $fillable = [
-        'batch_id',
+        'catch_id',
         'user_id',
         'species',
         'drying_method',
@@ -23,15 +26,13 @@ class CatchLog extends Model
         'image_urls',
         'quality_score',
         'status',
-        'lat',
-        'lng',
         'blockchain_transaction_hash',
         'blockchain_block_number',
     ];
 
     protected $casts = [
+        'catch_id' => 'string',
         'user_id' => 'string',
-        'batch_id' => 'string',
         'species' => 'string',
         'drying_method' => 'string',
         'batch_size' => 'float',
@@ -43,8 +44,6 @@ class CatchLog extends Model
         'image_urls' => 'array',
         'quality_score' => 'float',
         'status' => 'string',
-        'lat' => 'float',
-        'lng' => 'float',
         'blockchain_transaction_hash' => 'string',
         'blockchain_block_number' => 'integer',
         'created_at' => 'datetime',
@@ -54,7 +53,7 @@ class CatchLog extends Model
     protected $attributes = [
         'status' => 'pending',
         'image_urls' => '[]',
-        'quality_score' => 0.0,
+        'quality_score' => 0,
     ];
 
     public function user()

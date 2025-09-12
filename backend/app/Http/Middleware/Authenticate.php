@@ -26,7 +26,7 @@ class Authenticate extends Middleware
     {
         if ($request->expectsJson()) {
             abort(response()->json([
-                'message' => __('auth.unauthenticated', 'Unauthenticated'),
+                'message' => __('auth.unauthenticated'),
                 'status' => 401
             ], 401));
         }
@@ -46,7 +46,7 @@ class Authenticate extends Middleware
         // Add CORS headers only if not already set
         if ($request->expectsJson()) {
             if (!$response->headers->has('Access-Control-Allow-Origin')) {
-                $response->header('Access-Control-Allow-Origin', 'http://localhost:5173');
+                $response->header('Access-Control-Allow-Origin', 'http://peer0.org1.example.com:8000');
             }
             if (!$response->headers->has('Access-Control-Allow-Credentials')) {
                 $response->header('Access-Control-Allow-Credentials', 'true');
