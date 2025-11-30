@@ -1,610 +1,356 @@
-import React, { useState, useEffect, useContext } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+// src/pages/AdminUsers.jsx
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import styled from 'styled-components';
 import { motion } from 'framer-motion';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faUsers, faFish, faShoppingCart, faSignOutAlt, faBars, faSearch, faInfoCircle, faEdit, faTrash } from '@fortawesome/free-solid-svg-icons';
-import { Tooltip } from 'react-tooltip';
-import { useAuth} from '../context/AuthContext';
-import api from '../utils/api'; // Import api from new utility file
-import { ThemeContext } from '../context/ThemeContext';
+import {
+  faUsers, faFish, faHome, faSignOutAlt, faBars,
+  faSearch, faEdit, faTrash, faShieldAlt
+} from '@fortawesome/free-solid-svg-icons';
+import { useAuth } from '../context/AuthContext';
+import { toast } from 'react-toastify';
+import api from '../utils/api';
 import * as Sentry from '@sentry/react';
+import axios from 'axios';
 
-// Styled Components
-const AdminContainer = styled(motion.create('div'))`
+// SAME DESIGN AS ADMIN DASHBOARD
+const DashboardContainer = styled.div`
   display: flex;
   min-height: 100vh;
-  background: ${({ theme }) => theme.background || '#F1F5F9'};
-  font-family: 'Roboto', sans-serif;
-  overflow-x: hidden;
+  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+  font-family: 'Inter', sans-serif;
 `;
 
-const Sidebar = styled(motion.create('aside'))`
-  width: 250px;
-  background: ${({ theme }) => theme.primary || '#1E3A8A'};
+const Sidebar = styled(motion.aside)`
+  width: 280px;
+  background: #0f172a;
   color: white;
-  padding: clamp(1rem, 2vw, 1.5rem);
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
+  padding: 2rem 1.5rem;
   position: sticky;
   top: 0;
   height: 100vh;
+  z-index: 1000;
   @media (max-width: 768px) {
-    width: 100%;
     position: fixed;
-    z-index: 1000;
     transform: ${({ isOpen }) => (isOpen ? 'translateX(0)' : 'translateX(-100%)')};
-    transition: transform 0.3s ease;
+    transition: transform 0.4s ease;
   }
 `;
 
-const SidebarLink = styled(motion.create(Link))`
-  padding: 0.75rem;
-  border-radius: 8px;
+const SidebarLink = styled(motion.div)`
+  padding: 1rem;
+  border-radius: 16px;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  color: white;
-  text-decoration: none;
+  gap: 1rem;
   cursor: pointer;
-  font-size: clamp(0.9rem, 2vw, 1rem);
-  &:hover {
-    background: rgba(255, 255, 255, 0.1);
-  }
+  margin: 0.5rem 0;
+  background: ${({ active }) => active ? '#10b981' : 'transparent'};
+  font-weight: ${({ active }) => active ? '700' : '500'};
+  &:hover { background: #1e293b; }
 `;
 
-const SidebarButton = styled(motion.create('div'))`
-  padding: 0.75rem;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  color: white;
-  text-decoration: none;
-  cursor: pointer;
-  font-size: clamp(0.9rem, 2vw, 1rem);
-  &:hover {
-    background: rgba(255, 255, 255, 0.1);
-  }
-`;
-
-const MainContent = styled(motion.create('main'))`
+const MainContent = styled.main`
   flex: 1;
-  padding: clamp(1rem, 3vw, 2rem);
-  background: ${({ theme }) => theme.background || '#F1F5F9'};
+  padding: 2rem;
+  max-width: 1600px;
+  margin: 0 auto;
 `;
 
-const Header = styled(motion.create('header'))`
+const Header = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
   background: white;
-  padding: clamp(0.75rem, 2vw, 1rem) clamp(1rem, 3vw, 2rem);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  margin-bottom: clamp(1rem, 3vw, 2rem);
-  border-radius: 8px;
+  padding: 1.5rem 2rem;
+  border-radius: 20px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+  margin-bottom: 2rem;
 `;
 
-const MenuButton = styled(motion.create('button'))`
-  display: none;
-  background: none;
-  border: none;
-  color: ${({ theme }) => theme.primary || '#3B82F6'};
-  font-size: clamp(1.2rem, 3vw, 1.5rem);
-  cursor: pointer;
-  @media (max-width: 768px) {
-    display: block;
-  }
-`;
-
-const Title = styled(motion.create('h1'))`
-  font-size: clamp(1.2rem, 3vw, 1.5rem);
-  color: ${({ theme }) => theme.text || '#1E3A8A'};
-  margin: 0;
-`;
-
-const UserInfo = styled(motion.create('div'))`
-  display: flex;
-  align-items: center;
-  gap: clamp(0.5rem, 2vw, 1rem);
-  font-size: clamp(0.8rem, 2vw, 1rem);
-  color: ${({ theme }) => theme.text || '#1E3A8A'};
-`;
-
-const LogoutButton = styled(motion.create('button'))`
-  background: none;
-  border: none;
-  color: ${({ theme }) => theme.primary || '#3B82F6'};
-  cursor: pointer;
-  font-size: clamp(0.8rem, 2vw, 1rem);
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-`;
-
-const SearchBar = styled(motion.create('div'))`
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-bottom: clamp(1rem, 3vw, 1.5rem);
+const Section = styled.div`
   background: white;
-  padding: 0.5rem 1rem;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  max-width: 600px;
-  width: 100%;
-`;
-
-const SearchInput = styled.input`
-  border: none;
-  outline: none;
-  flex: 1;
-  font-size: clamp(0.9rem, 2vw, 1rem);
-`;
-
-const TableWrapper = styled(motion.create('div'))`
-  background: white;
-  padding: clamp(1rem, 2vw, 1.5rem);
-  border-radius: 8px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  margin-bottom: clamp(1rem, 3vw, 2rem);
-  overflow-x: auto;
+  padding: 2.5rem;
+  border-radius: 20px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+  margin-bottom: 2rem;
 `;
 
 const Table = styled.table`
   width: 100%;
   border-collapse: collapse;
-  min-width: 600px;
+  margin-top: 1rem;
 `;
 
 const Th = styled.th`
-  padding: clamp(0.75rem, 2vw, 1rem);
-  background: ${({ theme }) => theme.primary || '#1E3A8A'};
+  padding: 1rem;
+  background: #0f172a;
   color: white;
   text-align: left;
-  font-weight: 500;
-  font-size: clamp(0.9rem, 2vw, 1rem);
-  cursor: pointer;
+  font-weight: 600;
 `;
 
 const Td = styled.td`
-  padding: clamp(0.75rem, 2vw, 1rem);
-  border-bottom: 1px solid ${({ theme }) => theme.textSecondary || '#E5E7EB'};
-  font-size: clamp(0.85rem, 2vw, 0.95rem);
+  padding: 1rem;
+  border-bottom: 1px solid #e2e8f0;
 `;
 
-const AvatarWrapper = styled(motion.create('div'))`
-  width: 40px;
-  height: 40px;
-  position: relative;
-  overflow: hidden;
-  border-radius: 50%;
-`;
-
-const Avatar = styled.img`
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: center;
-  display: block;
-`;
-
-const ActionButton = styled(motion.create('button'))`
-  padding: 0.5rem 1rem;
-  background: ${({ theme, isDelete }) => (isDelete ? '#EF4444' : theme.primary || '#3B82F6')};
+const ActionButton = styled(motion.button)`
+  padding: 0.7rem 1.4rem;
+  border: none;
+  border-radius: 12px;
+  margin: 0 0.25rem;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.9rem;
+  background: ${({ danger }) => danger ? '#ef4444' : '#10b981'};
   color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  margin-right: 0.5rem;
-  font-size: clamp(0.8rem, 2vw, 0.9rem);
-  &:hover {
-    background: ${({ theme, isDelete }) => (isDelete ? '#DC2626' : theme.primaryHover || '#2563EB')};
+  &:hover { opacity: 0.9; }
+`;
+
+const SearchInput = styled.input`
+  width: 100%;
+  padding: 1.2rem 1.6rem;
+  border: 2px solid #e2e8f0;
+  border-radius: 16px;
+  font-size: 1.1rem;
+  margin-bottom: 2rem;
+  &:focus {
+    outline: none;
+    border-color: #10b981;
+    box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.2);
   }
-  &:disabled {
-    background: ${({ theme }) => theme.textSecondary || '#6B7280'};
-    cursor: not-allowed;
-  }
 `;
 
-const ErrorMessage = styled(motion.create('p'))`
-  color: #EF4444;
-  font-size: clamp(0.8rem, 2vw, 0.875rem);
-  text-align: center;
-  margin-bottom: clamp(0.5rem, 2vw, 1rem);
+const Avatar = styled.div`
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: #e2e8f0;
+  background-image: url(${props => props.src});
+  background-size: cover;
+  background-position: center;
+  flex-shrink: 0;
 `;
 
-const ModalOverlay = styled(motion.create('div'))`
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
-`;
-
-const ModalContent = styled(motion.create('div'))`
-  background: white;
-  padding: clamp(1.5rem, 3vw, 2rem);
-  border-radius: 8px;
-  max-width: 500px;
-  width: 90%;
-  text-align: center;
-`;
-
-const ModalButton = styled(motion.create('button'))`
+const RoleBadge = styled.span`
   padding: 0.5rem 1rem;
-  margin: 0 0.5rem;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: clamp(0.8rem, 2vw, 0.9rem);
-  &:first-child {
-    background: ${({ theme }) => theme.primary || '#3B82F6'};
-    color: white;
-  }
-  &:last-child {
-    background: #E5E7EB;
-    color: #1F2937;
-  }
+  border-radius: 12px;
+  font-weight: bold;
+  font-size: 0.9rem;
+  background: ${props => props.isAdmin ? '#fee2e2' : '#ecfdf5'};
+  color: ${props => props.isAdmin ? '#dc2626' : '#10b981'};
 `;
-
-const Pagination = styled(motion.create('div'))`
-  display: flex;
-  justify-content: center;
-  gap: 0.5rem;
-  margin-top: clamp(0.5rem, 2vw, 1rem);
-`;
-
-const PageButton = styled(motion.create('button'))`
-  padding: 0.5rem 1rem;
-  background: ${({ active, theme }) => (active ? theme.primary : '#E5E7EB')};
-  color: ${({ active }) => (active ? 'white' : '#1F2937')};
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: clamp(0.8rem, 2vw, 0.9rem);
-  &:disabled {
-    background: #D1D5DB;
-    cursor: not-allowed;
-  }
-`;
-
-const pageVariants = {
-  initial: { opacity: 0, y: 20 },
-  animate: { opacity: 1, y: 0 },
-  exit: { opacity: 0, y: -20 },
-};
-
-const modalVariants = {
-  initial: { opacity: 0, scale: 0.8 },
-  animate: { opacity: 1, scale: 1 },
-  exit: { opacity: 0, scale: 0.8 },
-};
 
 const AdminUsers = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { user, loading: authLoading, error: authError, isOnline, logout } = useAuth();
-  const { theme } = useContext(ThemeContext);
-  const [users, setUsers] = useState([]);
-  const [filteredUsers, setFilteredUsers] = useState([]);
-  const [search, setSearch] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [modal, setModal] = useState({ open: false, type: '', data: null });
-  const [currentPage, setCurrentPage] = useState(1);
-  const [sortConfig, setSortConfig] = useState({ key: 'email', direction: 'asc' });
+  const { user, logout } = useAuth();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const itemsPerPage = 5;
+  const [users, setUsers] = useState([]);
+  const [search, setSearch] = useState('');
+  const [loading, setLoading] = useState(true);
 
-  if (authLoading) {
-    return <div>{t('dashboard.loading')}</div>;
-  }
-
-  if (!user || !user.role || user.role !== 'admin') {
+  useEffect(() => {
+  if (!user || user.role !== 'admin') {
     navigate('/');
-    return null;
+    return;
   }
 
-  useEffect(() => {
-    const fetchUsers = async () => {
-      setLoading(true);
-      setError('');
-      try {
-        if (isOnline) {
-          const response = await api.get('/users');
-          setUsers(response.data);
-          setFilteredUsers(response.data);
-        } else {
-          setError(t('dashboard.errors.offline'));
-        }
-      } catch (error) {
-        Sentry.captureException(error);
-        setError(error.response?.data?.message || t('dashboard.errors.generic'));
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchUsers();
-  }, [user, isOnline, t]);
-
-  useEffect(() => {
-    const filtered = users.filter(
-      (u) =>
-        (u.email?.toLowerCase().includes(search.toLowerCase()) || '') ||
-        (u.national_id?.toLowerCase().includes(search.toLowerCase()) || '') ||
-        (u.name?.toLowerCase().includes(search.toLowerCase()) || '')
-    );
-    setFilteredUsers(filtered);
-    setCurrentPage(1);
-  }, [search, users]);
-
-  const handleSort = (key) => {
-    let direction = 'asc';
-    if (sortConfig.key === key && sortConfig.direction === 'asc') {
-      direction = 'desc';
-    }
-    setSortConfig({ key, direction });
-
-    const sortedData = [...filteredUsers].sort((a, b) => {
-      const aValue = a[key] || '';
-      const bValue = b[key] || '';
-      if (aValue < bValue) return direction === 'asc' ? -1 : 1;
-      if (aValue > bValue) return direction === 'asc' ? 1 : -1;
-      return 0;
-    });
-
-    setFilteredUsers(sortedData);
-  };
-
-  const handleDeleteUser = async (userId) => {
+  const fetchUsers = async () => {
     try {
-      if (isOnline) {
-        await api.delete(`/users/${userId}`);
-        setUsers(users.filter((u) => u.id !== userId));
-        setFilteredUsers(filteredUsers.filter((u) => u.id !== userId));
-        setModal({ open: false, type: '', data: null });
+      setLoading(true);
+
+      // 1. Hakikisha CSRF cookie iko (hii ni muhimu kwa Sanctum)
+      await axios.get('http://localhost:8000/sanctum/csrf-cookie', {
+        withCredentials: true
+      });
+
+      // 2. Piga API kwa kutumia instance yako ya api (inayo withCredentials: true)
+      const response = await api.get('/users');
+
+      // 3. Handle response data kwa usalama
+      let data = response?.data || [];
+
+      if (data.users && Array.isArray(data.users)) data = data.users;
+      else if (data.data && Array.isArray(data.data)) data = data.data;
+      else if (!Array.isArray(data)) data = [];
+
+      setUsers(data);
+      toast.success(`Wateja ${data.length} wamepakiawa kikamilifu!`);
+
+    } catch (err) {
+      console.error('Failed to fetch users:', err);
+      
+      if (err.response?.status === 401) {
+        toast.error("Session imepotea. Tafadhali ingia tena.");
+        logout();
+        navigate('/login');
       } else {
-        setError(t('dashboard.errors.offline'));
+        toast.error("Imeshindwa kupakia wateja — jaribu tena");
       }
-    } catch (error) {
-      Sentry.captureException(error);
-      setError(error.response?.data?.message || t('dashboard.errors.generic'));
+      
+      Sentry.captureException(err);
+      setUsers([]);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleEditUser = (user) => {
-    // Placeholder for edit modal; implement modal with form for updating user details
-    setModal({ open: true, type: 'edit', data: user });
+  fetchUsers();
+}, [user, navigate, logout]);
+
+  const filteredUsers = Array.isArray(users)
+    ? users.filter(u => {
+        const query = search.toLowerCase();
+        return (
+          (u.name?.toLowerCase() || '').includes(query) ||
+          (u.email?.toLowerCase() || '').includes(query) ||
+          (u.national_id || '').includes(query) ||
+          (u.phone || '').includes(query)
+        );
+      })
+    : [];
+
+  const handleDelete = async (id) => {
+    if (!window.confirm("Una uhakika unataka kufuta mteja huyu?")) return;
+
+    try {
+      await axios.delete(`http://localhost:8000/api/users/${id}`, { withCredentials: true });
+      setUsers(prev => prev.filter(u => u.id !== id));
+      toast.success("Mteja amefutwa kikamilifu");
+    } catch (err) {
+      toast.error("Imeshindwa kufuta mteja");
+      Sentry.captureException(err);
+    }
   };
 
-  const paginatedUsers = filteredUsers.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
-
-  const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
+  if (!user || user.role !== 'admin') return null;
 
   return (
-    <motion.div
-      variants={pageVariants}
-      initial="initial"
-      animate="animate"
-      exit="exit"
-      transition={{ duration: 0.3 }}
-    >
-      <AdminContainer theme={theme}>
-        <Sidebar
-          initial={{ x: -250 }}
-          animate={{ x: isSidebarOpen ? 0 : -250 }}
-          transition={{ duration: 0.3 }}
-          isOpen={isSidebarOpen}
-        >
-          <motion.h2
-            whileHover={{ scale: 1.05 }}
-            style={{ marginBottom: '1rem', fontSize: 'clamp(1.2rem, 3vw, 1.5rem)' }}
-          >
-            {t('Admin Dashboard')}
-          </motion.h2>
-          <SidebarLink to="/dashboard" onClick={() => setIsSidebarOpen(false)}>
-            <FontAwesomeIcon icon={faUsers} /> {t('Dashboard')}
+    <DashboardContainer>
+      <Sidebar isOpen={isSidebarOpen}>
+        <motion.h2 whileHover={{ scale: 1.05 }} style={{ fontSize: '1.8rem', marginBottom: '2rem' }}>
+          FishKE Admin
+        </motion.h2>
+
+        <SidebarLink onClick={() => navigate('/admin')}>
+          <FontAwesomeIcon icon={faHome} /> Overview
+        </SidebarLink>
+        <SidebarLink onClick={() => navigate('/admin/catch-logs')}>
+          <FontAwesomeIcon icon={faFish} /> Rekodi za Samaki
+        </SidebarLink>
+        <SidebarLink active>
+          <FontAwesomeIcon icon={faUsers} /> Wateja & Wavuvi
+        </SidebarLink>
+
+        <div style={{ marginTop: 'auto' }}>
+          <SidebarLink onClick={() => logout().then(() => navigate('/login'))}>
+            <FontAwesomeIcon icon={faSignOutAlt} /> Logout
           </SidebarLink>
-          <SidebarLink to="/admin/users" onClick={() => setIsSidebarOpen(false)}>
-            <FontAwesomeIcon icon={faUsers} /> {t('Manage Users')}
-          </SidebarLink>
-          <SidebarLink to="/admin/catch-logs" onClick={() => setIsSidebarOpen(false)}>
-            <FontAwesomeIcon icon={faFish} /> {t('Catch Logs')}
-          </SidebarLink>
-          <SidebarLink to="/admin/market" onClick={() => setIsSidebarOpen(false)}>
-            <FontAwesomeIcon icon={faShoppingCart} /> {t('Market')}
-          </SidebarLink>
-          <SidebarLink to="/profile" onClick={() => setIsSidebarOpen(false)}>
-            <FontAwesomeIcon icon={faUsers} /> {t('Profile')}
-          </SidebarLink>
-          <SidebarButton
-            onClick={() => {
-              logout();
-              navigate('/login');
-              setIsSidebarOpen(false);
-            }}
-          >
-            <FontAwesomeIcon icon={faSignOutAlt} /> {t('Logout')}
-          </SidebarButton>
-        </Sidebar>
-        <MainContent>
-          <Header>
-            <MenuButton
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-            >
-              <FontAwesomeIcon icon={faBars} />
-            </MenuButton>
-            <Title>{t('Manage Users')}</Title>
-            <UserInfo>
-              {user?.name || 'Unknown User'} ({user?.role || 'Unknown Role'})
-              <LogoutButton whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => logout()}>
-                <FontAwesomeIcon icon={faSignOutAlt} /> {t('Logout')}
-              </LogoutButton>
-            </UserInfo>
-          </Header>
-          {(authError || error) && (
-            <ErrorMessage
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.3 }}
-              role="alert"
-            >
-              {authError || error}
-            </ErrorMessage>
-          )}
-          {loading && <p>{t('dashboard.loading')}</p>}
-          <SearchBar>
-            <FontAwesomeIcon icon={faSearch} />
-            <SearchInput
-              type="text"
-              placeholder={t('Search users...')}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              aria-label={t('Search users')}
-            />
-          </SearchBar>
-          <TableWrapper>
-            <h3 style={{ fontSize: 'clamp(1.1rem, 2.5vw, 1.25rem)' }}>{t('Users')}</h3>
+        </div>
+      </Sidebar>
+
+      <MainContent>
+        <Header>
+          <button onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
+            <FontAwesomeIcon icon={faBars} style={{ fontSize: '1.8rem' }} />
+          </button>
+          <h1 style={{ fontSize: '2rem', fontWeight: '900', color: '#0f172a' }}>
+            Wateja na Wavuvi • {user.name}
+          </h1>
+        </Header>
+
+        <Section>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
+            <FontAwesomeIcon icon={faUsers} size="2x" color="#10b981" />
+            <h2 style={{ fontSize: '2rem', fontWeight: '900', margin: 0 }}>
+              Orodha ya Wateja ({filteredUsers.length})
+            </h2>
+          </div>
+
+          <SearchInput
+            type="text"
+            placeholder="Tafuta jina, email, simu au National ID..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+
+          {loading ? (
+            <div style={{ textAlign: 'center', padding: '4rem' }}>
+              <FontAwesomeIcon icon={faUsers} size="4x" spin color="#10b981" />
+              <p style={{ marginTop: '1rem', fontSize: '1.2rem' }}>Inapakia wateja...</p>
+            </div>
+          ) : filteredUsers.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '6rem', color: '#64748b' }}>
+              <FontAwesomeIcon icon={faUsers} size="5x" color="#cbd5e1" />
+              <h3 style={{ margin: '2rem 0' }}>Hakuna wateja bado</h3>
+              <p>Wavuvi na wateja wataanza kujiunga hivi karibuni!</p>
+            </div>
+          ) : (
             <Table>
               <thead>
                 <tr>
-                  <Th>{t('Avatar')}</Th>
-                  <Th onClick={() => handleSort('id')}>
-                    {t('dashboard.userId')} {sortConfig.key === 'id' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                  </Th>
-                  <Th onClick={() => handleSort('name')}>
-                    {t('dashboard.name')} {sortConfig.key === 'name' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                  </Th>
-                  <Th onClick={() => handleSort('email')}>
-                    {t('dashboard.email')} {sortConfig.key === 'email' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                  </Th>
-                  <Th onClick={() => handleSort('national_id')}>
-                    {t('National ID')} {sortConfig.key === 'national_id' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                  </Th>
-                  <Th onClick={() => handleSort('role')}>
-                    {t('dashboard.role')} {sortConfig.key === 'role' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                  </Th>
-                  <Th>{t('dashboard.actions')}</Th>
+                  <Th>Mvuvi / Mteja</Th>
+                  <Th>Email</Th>
+                  <Th>Simu / ID</Th>
+                  <Th>Nafasi</Th>
+                  <Th>Alijiunga</Th>
+                  <Th>Hatua</Th>
                 </tr>
               </thead>
               <tbody>
-                {paginatedUsers.map((u) => (
+                {filteredUsers.map(u => (
                   <tr key={u.id}>
                     <Td>
-                      <AvatarWrapper>
-                        <Avatar
-                          src={u.avatar || '/assets/fallback-avatar.jpg'}
-                          alt={t('profile.avatarAlt', { name: u.name || 'User' })}
-                          onError={(e) => (e.target.src = '/assets/fallback-avatar.jpg')}
-                        />
-                      </AvatarWrapper>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                        <Avatar src={u.avatar} />
+                        <strong>{u.name || 'Hajajulikana'}</strong>
+                      </div>
                     </Td>
-                    <Td>{u.id}</Td>
-                    <Td>{u.name || 'N/A'}</Td>
-                    <Td>{u.email}</Td>
-                    <Td>{u.national_id || 'N/A'}</Td>
-                    <Td>{u.role}</Td>
+                    <Td>{u.email || '—'}</Td>
+                    <Td>{u.national_id || u.phone || '—'}</Td>
                     <Td>
-                      <ActionButton
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        onClick={() => handleEditUser(u)}
-                        aria-label={t('Edit user')}
-                      >
-                        <FontAwesomeIcon icon={faEdit} /> {t('Edit')}
-                      </ActionButton>
-                      <ActionButton
-                        isDelete
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        onClick={() => setModal({ open: true, type: 'delete', data: u.id })}
-                        aria-label={t('Delete user')}
-                      >
-                        <FontAwesomeIcon icon={faTrash} /> {t('Delete')}
-                      </ActionButton>
-                      <FontAwesomeIcon
-                        icon={faInfoCircle}
-                        data-tooltip-id={`user-${u.id}`}
-                        style={{ marginLeft: '0.5rem', cursor: 'pointer' }}
-                        aria-label={t('View user details')}
-                      />
-                      <Tooltip id={`user-${u.id}`} place="top" content={JSON.stringify(u, null, 2)} />
+                      <RoleBadge isAdmin={u.role === 'admin'}>
+                        {u.role === 'admin' ? 'ADMIN' : u.role === 'fisherman' ? 'MVUVI' : 'MTEJA'}
+                      </RoleBadge>
+                    </Td>
+                    <Td>
+                      {u.created_at 
+                        ? new Date(u.created_at).toLocaleDateString('sw-KE')
+                        : '—'
+                      }
+                    </Td>
+                    <Td>
+                      {u.role !== 'admin' ? (
+                        <>
+                          <ActionButton whileHover={{ scale: 1.05 }}>
+                            <FontAwesomeIcon icon={faEdit} /> Hariri
+                          </ActionButton>
+                          <ActionButton 
+                            danger 
+                            whileHover={{ scale: 1.05 }}
+                            onClick={() => handleDelete(u.id)}
+                          >
+                            <FontAwesomeIcon icon={faTrash} /> Futa
+                          </ActionButton>
+                        </>
+                      ) : (
+                        <span style={{ color: '#10b981', fontWeight: 'bold' }}>
+                          <FontAwesomeIcon icon={faShieldAlt} /> Msimamizi
+                        </span>
+                      )}
                     </Td>
                   </tr>
                 ))}
               </tbody>
             </Table>
-            <Pagination>
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                <PageButton
-                  key={page}
-                  active={currentPage === page}
-                  onClick={() => setCurrentPage(page)}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  aria-label={t('Page {{page}}', { page })}
-                >
-                  {page}
-                </PageButton>
-              ))}
-            </Pagination>
-          </TableWrapper>
-        </MainContent>
-        {modal.open && (
-          <ModalOverlay
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
-            <ModalContent
-              variants={modalVariants}
-              initial="initial"
-              animate="animate"
-              exit="exit"
-              transition={{ duration: 0.3 }}
-            >
-              <h3 style={{ fontSize: 'clamp(1.1rem, 2.5vw, 1.25rem)' }}>
-                {modal.type === 'delete'
-                  ? t('dashboard.confirmDelete')
-                  : t('dashboard.confirmEdit')}
-              </h3>
-              <div>
-                <ModalButton
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => (modal.type === 'delete' ? handleDeleteUser(modal.data) : handleEditUser(modal.data))}
-                  aria-label={t('Confirm')}
-                >
-                  {t('Confirm')}
-                </ModalButton>
-                <ModalButton
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => setModal({ open: false, type: '', data: null })}
-                  aria-label={t('Cancel')}
-                >
-                  {t('Cancel')}
-                </ModalButton>
-              </div>
-            </ModalContent>
-          </ModalOverlay>
-        )}
-      </AdminContainer>
-    </motion.div>
+          )}
+        </Section>
+      </MainContent>
+    </DashboardContainer>
   );
 };
 

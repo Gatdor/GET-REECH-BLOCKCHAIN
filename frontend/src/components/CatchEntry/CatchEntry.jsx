@@ -1,285 +1,479 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useCallback, useMemo } from 'react';
 import styled from 'styled-components';
+import { useTranslation } from 'react-i18next';
 import { AuthContext } from '../../context/AuthContext';
 import { set, get } from 'idb-keyval';
-import axios from 'axios';
 
 const Form = styled.form`
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 1.25rem;
   max-width: 600px;
   margin: 2rem auto;
-  padding: 1rem;
+  padding: 1.75rem;
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
   @media (max-width: 768px) {
-    max-width: 90%;
+    max-width: 95%;
+    padding: 1.25rem;
   }
 `;
 
-const Preview = styled.img`
-  max-width: 100px;
-  max-height: 100px;
-  object-fit: cover;
-  border: 1px solid #ccc;
-  margin: 0.5rem;
+const Label = styled.label`
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: #1f2937;
+  margin-bottom: 0.25rem;
 `;
 
 const Input = styled.input`
-  padding: 0.6rem;
+  padding: 0.75rem 1rem;
   font-size: 1rem;
-  border: 1px solid #ccc;
-  border-radius: 4px;
+  border: 1.5px solid #d1d5db;
+  border-radius: 10px;
+  background: #f9fafb;
+  transition: all 0.2s;
+  &:focus {
+    outline: none;
+    border-color: #3b82f6;
+    background: white;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  }
 `;
 
 const Select = styled.select`
-  padding: 0.6rem;
+  padding: 0.75rem 1rem;
   font-size: 1rem;
-  border: 1px solid #ccc;
-  border-radius: 4px;
+  border: 1.5px solid #d1d5db;
+  border-radius: 10px;
+  background: #f9fafb;
+  &:focus {
+    outline: none;
+    border-color: #3b82f6;
+  }
 `;
 
 const Button = styled.button`
-  padding: 0.8rem;
-  background-color: #007bff;
+  padding: 0.875rem;
+  background: #3b82f6;
   color: white;
   border: none;
-  border-radius: 4px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-top: 0.5rem;
+  transition: background 0.2s;
+  &:hover:not(:disabled) {
+    background: #2563eb;
+  }
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+`;
+
+const ResetButton = styled.button`
+  padding: 0.875rem;
+  background: #6b7280;
+  color: white;
+  border: none;
+  border-radius: 10px;
   cursor: pointer;
   font-size: 1rem;
+  font-weight: 600;
+  margin-top: 0.5rem;
+  transition: background 0.2s;
   &:hover {
-    background-color: #0056b3;
+    background: #4b5563;
   }
 `;
 
 const Message = styled.p`
-  color: ${props => (props.error ? 'red' : 'green')};
-  font-size: 0.9rem;
+  color: ${({ error }) => (error ? '#ef4444' : '#10b981')};
+  font-size: 0.95rem;
+  font-weight: 500;
+  text-align: center;
+  margin: 0.75rem 0 0;
+  padding: 0.75rem;
+  border-radius: 8px;
+  background: ${({ error }) => (error ? '#fee2e2' : '#f0fdf4')};
+  border: 1px solid ${({ error }) => (error ? '#fecaca' : '#bbf7d0')};
 `;
 
+const PreviewGrid = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+`;
+
+const PreviewWrapper = styled.div`
+  position: relative;
+  width: 90px;
+  height: 90px;
+`;
+
+const Preview = styled.img`
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 10px;
+  border: 2px solid #e5e7eb;
+`;
+
+const RemoveBtn = styled.button`
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  background: #ef4444;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  font-size: 0.75rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+`;
+
+/* -------------------------------------------------------------------------- */
+/*                                 Main Component                             */
+/* -------------------------------------------------------------------------- */
 const CatchLog = () => {
-  const { user, supabase, isOnline } = useContext(AuthContext);
+  const { t } = useTranslation();
+  const { user, isOnline, api } = useContext(AuthContext);
   const [location, setLocation] = useState({ lat: '', lng: '' });
+  const [images, setImages] = useState([]);
+  const [imagePreviews, setImagePreviews] = useState([]);
+  const [message, setMessage] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const [formData, setFormData] = useState({
-    catchID: `CATCH_${Date.now()}`,
     species: '',
     dryingMethod: '',
-    batchSize: '',
     weight: '',
-    harvestDate: '',
+    harvestDate: new Date().toISOString().split('T')[0],
     shelfLife: '',
     price: '',
-    images: [],
   });
-  const [message, setMessage] = useState('');
-  const [error, setError] = useState(false);
 
+  // Auto-generated Catch ID
+  const catchId = useMemo(() => {
+    const timestamp = Date.now().toString(36);
+    const random = Math.random().toString(36).substr(2, 5);
+    return `CATCH-${timestamp}-${random}`.toUpperCase();
+  }, []);
+
+  /* --------------------------- Geolocation --------------------------- */
   useEffect(() => {
-    // Get geolocation
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-      },
-      (err) => {
-        console.error('GPS Error:', err);
-        setMessage('Failed to detect location. Please allow GPS access.');
-        setError(true);
-      },
-      { enableHighAccuracy: true, timeout: 10000 }
-    );
-
-    // Sync offline catches
-    if (isOnline) {
-      syncOfflineCatches();
-    }
-    window.addEventListener('online', syncOfflineCatches);
-    return () => window.removeEventListener('online', syncOfflineCatches);
-  }, [isOnline]);
-
-  const syncOfflineCatches = async () => {
-    try {
-      const offlineActions = (await get('offlineActions')) || [];
-      for (const action of offlineActions) {
-        if (action.type === 'catch_log') {
-          const { catchID, fisherID, species, weight, harvestDate } = action.data;
-          await axios.post('http://localhost:3001/api/log-catch', {
-            catchID,
-            fisherID,
-            species,
-            weightKg: weight,
-            date: harvestDate,
+    if ('geolocation' in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          setLocation({
+            lat: pos.coords.latitude.toFixed(6),
+            lng: pos.coords.longitude.toFixed(6),
           });
-          await supabase.from('catch_logs').insert(action.data);
-          // Remove synced action
-          const updatedActions = offlineActions.filter(a => a.data.catchID !== catchID);
-          await set('offlineActions', updatedActions);
+        },
+        () => {
+          setMessage(t('catchLog.location_failed', 'Location not detected. You can still submit.'));
+        },
+        { enableHighAccuracy: true, timeout: 20000 }
+      );
+    }
+  }, [t]);
+
+  /* --------------------------- Offline Sync --------------------------- */
+  const syncOfflineCatches = useCallback(async () => {
+    if (!isOnline) return;
+    try {
+      const offlineCatches = (await get('offlineCatches')) || [];
+      if (offlineCatches.length === 0) return;
+
+      let synced = 0;
+      const failed = [];
+
+      for (const entry of offlineCatches) {
+        try {
+          const formData = new FormData();
+          Object.entries(entry.data).forEach(([key, value]) => {
+            if (value !== null) formData.append(key, value);
+          });
+          entry.images.forEach((img, i) => formData.append(`image_${i}`, img));
+
+          await api.post('/catches', formData);
+          synced++;
+        } catch (err) {
+          failed.push(entry);
         }
       }
-      if (offlineActions.length > 0) {
-        setMessage('Synced offline catches successfully!');
-        setError(false);
+
+      await set('offlineCatches', failed);
+      if (synced > 0) {
+        setMessage(t('catchLog.sync_success', `Synced {{count}} catch(es)!`, { count: synced }));
       }
     } catch (err) {
       console.error('Sync error:', err);
-      setMessage('Failed to sync offline catches.');
-      setError(true);
     }
+  }, [isOnline, api, t]);
+
+  useEffect(() => {
+    if (isOnline) syncOfflineCatches();
+    const interval = setInterval(syncOfflineCatches, 30000);
+    window.addEventListener('online', syncOfflineCatches);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('online', syncOfflineCatches);
+    };
+  }, [syncOfflineCatches, isOnline]);
+
+  /* --------------------------- Image Upload --------------------------- */
+  const handleImageUpload = (e) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    const newPreviews = files.map(file => URL.createObjectURL(file));
+    setImages(prev => [...prev, ...files]);
+    setImagePreviews(prev => [...prev, ...newPreviews]);
   };
 
-  const handleImageUpload = async (e) => {
-    const files = Array.from(e.target.files);
-    try {
-      // Fallback to local storage (base64) to avoid IPFS costs
-      const imageUrls = await Promise.all(
-        files.map(async (file) => {
-          return new Promise((resolve) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result); // Base64 string
-            reader.readAsDataURL(file);
-          });
-        })
-      );
-      setFormData((prev) => ({ ...prev, images: files, imageUrls }));
-    } catch (err) {
-      console.error('Image upload error:', err);
-      setMessage('Failed to process images.');
-      setError(true);
-    }
+  const removeImage = (index) => {
+    setImages(prev => prev.filter((_, i) => i !== index));
+    setImagePreviews(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handleChange = (e) => {
-    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
-  };
-
+  /* --------------------------- Form Submit --------------------------- */
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (user?.role !== 'fisher') {
-      setMessage('Access denied: Only fishers can log catches.');
-      setError(true);
+    if (user?.role !== 'fisherman') {
+      setMessage(t('catchLog.access_denied', 'Access denied: Only fishermen can log catches.'));
       return;
     }
 
-    const data = {
-      catch_id: formData.catchID,
-      user_id: user?.id || 'anonymous',
+    setIsSubmitting(true);
+    setMessage('');
+
+    const payload = {
+      catch_id: catchId,
+      user_id: user.id,
       species: formData.species,
-      drying_method: formData.dryingMethod,
-      batch_size: parseFloat(formData.batchSize),
-      weight: parseFloat(formData.weight),
+      weight: formData.weight,
       harvest_date: formData.harvestDate,
-      location: { type: 'Point', coordinates: [location.lng, location.lat] },
-      shelf_life: parseInt(formData.shelfLife),
-      price: parseFloat(formData.price),
-      image_urls: formData.imageUrls || [],
-      quality_score: 0, // Placeholder, as image analysis is removed
+      drying_method: formData.dryingMethod,
+      shelf_life: formData.shelfLife,
+      price: formData.price,
+      lat: location.lat || null,
+      lng: location.lng || null,
     };
 
     try {
       if (isOnline) {
-        // Log to blockchain
-        await axios.post('http://localhost:3001/api/log-catch', {
-          catchID: formData.catchID,
-          fisherID: user.id,
-          species: formData.species,
-          weightKg: formData.weight,
-          date: formData.harvestDate,
+        const formData = new FormData();
+        Object.entries(payload).forEach(([key, value]) => {
+          if (value !== null) formData.append(key, value);
         });
-        // Log to Supabase
-        await supabase.from('catch_logs').insert(data);
-        setMessage('✅ Catch logged successfully');
-        setError(false);
+        images.forEach((img, i) => formData.append(`image_${i}`, img));
+
+        await api.post('/catches', formData);
+        setMessage(t('catchLog.success', 'Catch logged successfully!'));
+        resetForm();
       } else {
-        await set('offlineActions', [
-          ...(await get('offlineActions') || []),
-          { type: 'catch_log', data },
+        const offlineEntry = {
+          type: 'catch_log',
+          data: payload,
+          images,
+          timestamp: new Date().toISOString(),
+        };
+        await set('offlineCatches', [
+          ...(await get('offlineCatches') || []),
+          offlineEntry,
         ]);
-        setMessage('Catch saved locally, will sync when online.');
-        setError(false);
+        setMessage(t('catchLog.offline_saved', 'Saved offline. Will sync when online.'));
+        resetForm();
       }
     } catch (err) {
-      console.error('Submit error:', err);
-      setMessage(`❌ Failed to log catch: ${err.response?.data?.error || err.message}`);
-      setError(true);
+      setMessage(t('catchLog.error', 'Failed: {{msg}}', { msg: err.response?.data?.message || err.message }));
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  if (user?.role !== 'fisher') {
-    return <Message error>Access denied: Only fishers can access this page.</Message>;
+  const resetForm = () => {
+    setFormData({
+      species: '',
+      dryingMethod: '',
+      weight: '',
+      harvestDate: new Date().toISOString().split('T')[0],
+      shelfLife: '',
+      price: '',
+    });
+    setImages([]);
+    setImagePreviews([]);
+  };
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  /* --------------------------- Access Guard --------------------------- */
+  if (!user || user.role !== 'fisherman') {
+    return (
+      <Message error>
+        {t('catchLog.access_denied', 'Access denied: Only fishermen can access this page.')}
+      </Message>
+    );
   }
 
+  /* -------------------------------------------------------------------------- */
+  /*                                   Render                                   */
+  /* -------------------------------------------------------------------------- */
   return (
     <Form onSubmit={handleSubmit}>
-      <h2>Catch Log</h2>
-      <Select name="species" onChange={handleChange} value={formData.species} required>
-        <option value="">Select species</option>
-        <option value="Tilapia">Tilapia</option>
-        <option value="Catfish">Catfish</option>
-        <option value="Nile Perch">Nile Perch</option>
-      </Select>
-      <Select name="dryingMethod" onChange={handleChange} value={formData.dryingMethod} required>
-        <option value="">Select drying method</option>
-        <option value="Sun-dried">Sun-dried</option>
-        <option value="Smoked">Smoked</option>
-        <option value="Solar-dried">Solar-dried</option>
-      </Select>
-      <Input
-        type="text"
-        name="catchID"
-        value={formData.catchID}
-        onChange={handleChange}
-        placeholder="Catch ID (e.g., CATCH_123)"
-        required
-      />
-      <Input
-        type="number"
-        name="batchSize"
-        onChange={handleChange}
-        placeholder="Batch Size (kg)"
-        step="0.1"
-        required
-      />
-      <Input
-        type="number"
-        name="weight"
-        onChange={handleChange}
-        placeholder="Weight per fish (kg)"
-        step="0.1"
-        required
-      />
-      <Input
-        type="date"
-        name="harvestDate"
-        onChange={handleChange}
-        required
-      />
-      <Input
-        type="number"
-        name="shelfLife"
-        onChange={handleChange}
-        placeholder="Shelf Life (days)"
-        required
-      />
-      <Input
-        type="number"
-        name="price"
-        onChange={handleChange}
-        placeholder="Price (USD)"
-        step="0.01"
-        required
-      />
-      <Input
-        type="file"
-        accept="image/*"
-        multiple
-        onChange={handleImageUpload}
-        capture="environment"
-      />
-      <div>
-        {formData.images.map((img, i) => (
-          <Preview key={i} src={URL.createObjectURL(img)} alt={`preview-${i}`} />
-        ))}
+      <h2 style={{ textAlign: 'center', margin: '0 0 1.5rem', fontSize: '1.9rem', fontWeight: 700 }}>
+        {t('catchLog.title', 'Log New Catch')}
+      </h2>
+
+      {/* Auto-generated Catch ID */}
+      <div style={{
+        padding: '0.75rem 1rem',
+        background: '#f0f9ff',
+        borderRadius: 10,
+        fontFamily: 'monospace',
+        fontSize: '0.95rem',
+        color: '#1e40af'
+      }}>
+        <strong>{t('catchLog.catch_id', 'Catch ID (Auto):')}</strong> <code>{catchId}</code>
       </div>
-      <Button type="submit">Submit Catch</Button>
-      {message && <Message error={error}>{message}</Message>}
+
+      <div>
+        <Label>{t('catchLog.species', 'Species')} *</Label>
+        <Select name="species" value={formData.species} onChange={handleChange} required>
+          <option value="">{t('catchLog.placeholders.species', 'Select species')}</option>
+          <option value="Tilapia">Tilapia</option>
+          <option value="Catfish">Catfish</option>
+          <option value="Nile Perch">Nile Perch</option>
+          <option value="Mackerel">Mackerel</option>
+          <option value="Sardine">Sardine</option>
+        </Select>
+      </div>
+
+      <div>
+        <Label>{t('catchLog.dryingMethod', 'Drying Method')} *</Label>
+        <Select name="dryingMethod" value={formData.dryingMethod} onChange={handleChange} required>
+          <option value="">{t('catchLog.placeholders.dryingMethod', 'Select method')}</option>
+          <option value="Sun-dried">Sun-dried</option>
+          <option value="Smoked">Smoked</option>
+          <option value="Solar-dried">Solar-dried</option>
+          <option value="Oven-dried">Oven-dried</option>
+        </Select>
+      </div>
+
+      <div>
+        <Label>{t('catchLog.weight', 'Weight per Fish (kg)')} *</Label>
+        <Input
+          type="number"
+          name="weight"
+          value={formData.weight}
+          onChange={handleChange}
+          placeholder={t('catchLog.placeholders.weight', 'e.g. 1.5')}
+          step="0.1"
+          min="0.1"
+          required
+        />
+      </div>
+
+      <div>
+        <Label>{t('catchLog.harvestDate', 'Harvest Date')} *</Label>
+        <Input
+          type="date"
+          name="harvestDate"
+          value={formData.harvestDate}
+          onChange={handleChange}
+          required
+        />
+      </div>
+
+      <div>
+        <Label>{t('catchLog.shelfLife', 'Shelf Life (days)')} *</Label>
+        <Input
+          type="number"
+          name="shelfLife"
+          value={formData.shelfLife}
+          onChange={handleChange}
+          placeholder={t('catchLog.placeholders.shelfLife', 'e.g. 30')}
+          min="1"
+          required
+        />
+      </div>
+
+      <div>
+        <Label>{t('catchLog.price', 'Price per kg (USD)')} *</Label>
+        <Input
+          type="number"
+          name="price"
+          value={formData.price}
+          onChange={handleChange}
+          placeholder={t('catchLog.placeholders.price', 'e.g. 5.50')}
+          step="0.01"
+          min="0"
+          required
+        />
+      </div>
+
+      {location.lat && (
+        <div style={{ fontSize: '0.875rem', color: '#059669', background: '#f0fdf4', padding: '0.5rem 1rem', borderRadius: 8 }}>
+          {t('catchLog.location.lat', 'Lat')}: <strong>{location.lat}</strong> | 
+          {t('catchLog.location.lng', ' Lng')}: <strong>{location.lng}</strong>
+        </div>
+      )}
+
+      <div>
+        <Label>{t('catchLog.images', 'Photos')} ({t('optional', 'Optional')})</Label>
+        <Input
+          type="file"
+          accept="image/*"
+          multiple
+          capture="environment"
+          onChange={handleImageUpload}
+        />
+        {imagePreviews.length > 0 && (
+          <PreviewGrid>
+            {imagePreviews.map((src, i) => (
+              <PreviewWrapper key={i}>
+                <Preview src={src} alt={`preview-${i}`} />
+                <RemoveBtn type="button" onClick={() => removeImage(i)}>
+                  ×
+                </RemoveBtn>
+              </PreviewWrapper>
+            ))}
+          </PreviewGrid>
+        )}
+      </div>
+
+      <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1rem' }}>
+        <Button type="submit" disabled={isSubmitting} style={{ flex: 1 }}>
+          {isSubmitting 
+            ? t('catchLog.submitting', 'Submitting...') 
+            : isOnline 
+              ? t('catchLog.submit', 'Submit Catch')
+              : t('catchLog.save_offline', 'Save Offline')
+          }
+        </Button>
+        <ResetButton type="button" onClick={resetForm}>
+          {t('catchLog.reset', 'Reset')}
+        </ResetButton>
+      </div>
+
+      {message && (
+        <Message error={message.includes('Failed') || message.includes('denied')}>
+          {message}
+        </Message>
+      )}
     </Form>
   );
 };

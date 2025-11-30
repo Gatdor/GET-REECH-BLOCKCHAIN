@@ -10,12 +10,13 @@ async function main() {
 
         const connectionProfile = JSON.parse(fs.readFileSync('connection-profile.json', 'utf8'));
         const caInfo = connectionProfile.certificateAuthorities['ca.org1.example.com'];
-        const caTLSCACerts = caInfo.tlsCACerts.pem; // use pem instead of file path if available
+        const caTLSCACerts = caInfo.tlsCACerts.pem;
         const ca = new FabricCAServices(caInfo.url, { trustedRoots: caTLSCACerts, verify: false });
 
-        const adminExists = await wallet.get('admin');
+        // Use org1admin instead of admin
+        const adminExists = await wallet.get('org1admin');
         if (adminExists) {
-            console.log('✅ Admin already enrolled');
+            console.log('✅ org1admin already enrolled');
             return;
         }
 
@@ -33,8 +34,8 @@ async function main() {
             type: 'X.509',
         };
 
-        await wallet.put('admin', identity);
-        console.log('✅ Admin enrolled and imported into wallet');
+        await wallet.put('org1admin', identity);
+        console.log('✅ org1admin enrolled and imported into wallet');
     } catch (error) {
         console.error('❌ Error enrolling admin:', error.message);
     }

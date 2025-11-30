@@ -46,13 +46,14 @@ class Authenticate extends Middleware
         // Add CORS headers only if not already set
         if ($request->expectsJson()) {
             if (!$response->headers->has('Access-Control-Allow-Origin')) {
-                $response->header('Access-Control-Allow-Origin', 'http://peer0.org1.example.com:8000');
+                $response->header('Access-Control-Allow-Origin', $request->header('Origin') ?? '*');
             }
             if (!$response->headers->has('Access-Control-Allow-Credentials')) {
                 $response->header('Access-Control-Allow-Credentials', 'true');
             }
             $response->header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-            $response->header('Access-Control-Allow-Headers', 'Authorization, Content-Type, X-XSRF-TOKEN');
+            $response->header('Access-Control-Allow-Headers', 'Authorization, Content-Type, X-XSRF-TOKEN, X-Requested-With');
+
         }
 
         return $response;

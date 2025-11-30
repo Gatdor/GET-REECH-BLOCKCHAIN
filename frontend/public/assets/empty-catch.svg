@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 200 200">
+  <path fill="#e5e7eb" d="M50 80h100v60H50z"/>
+  <circle cx="100" cy="60" r="20" fill="#9ca3af"/>
+  <path fill="#9ca3af" d="M80 100h40v20H80z"/>
+  <text x="100" y="180" text-anchor="middle" fill="#6b7280" font-size="16">No catches yet</text>
+</svg>

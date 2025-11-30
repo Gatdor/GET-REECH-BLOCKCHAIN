@@ -1,0 +1,13 @@
+{
+  "connection_file": "../backend/fabric-samples/test-network/organizations/peerOrganizations/org1.example.com/connection-org1.json",
+  "appAdmin": "org1admin",
+  "appAdminSecret": "adminpw",
+  "orgMSPID": "Org1MSP",
+  "caName": "ca.org1.example.com",
+  "walletPath": "./wallet",
+  "userId": "org1admin",
+  "gatewayDiscovery": {
+    "enabled": true,
+    "asLocalhost": true
+  }
+}

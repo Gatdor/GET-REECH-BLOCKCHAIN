@@ -6,6 +6,8 @@ import { motion } from 'framer-motion';
 import { useAuth } from './context/AuthContext';
 import { ThemeContext } from './context/ThemeContext';
 import * as Sentry from '@sentry/react';
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -36,7 +38,7 @@ const pageTransition = {
   ease: 'easeInOut',
 };
 
-// Styled components (unchanged)
+// Styled components
 const AppWrapper = styled.div`
   display: flex;
   flex-direction: column;
@@ -58,7 +60,7 @@ const Header = styled.header`
   top: 0;
   z-index: 1000;
   border-bottom: 1px solid ${({ theme }) => theme.border || '#edf2f7'};
-  @media screen and (max-width: 768px) {
+  @media (max-width: 768px) {
     padding: 0.75rem 1rem;
   }
 `;
@@ -71,10 +73,17 @@ const Nav = styled.nav`
   margin: 0 auto;
   flex-wrap: wrap;
   gap: 1rem;
-  @media screen and (max-width: 768px) {
-    flex-direction: column;
-    gap: 0.5rem;
-    padding: 0.5rem 0;
+  padding: 0.5rem 0;
+
+  @media (max-width: 768px) {
+    flex-direction: row;
+    justify-content: space-between;
+    gap: 0.75rem;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 0.5rem 1rem;
+    &::-webkit-scrollbar { display: none; }
+    scrollbar-width: none;
   }
 `;
 
@@ -87,7 +96,11 @@ const StyledNavLink = styled(MotionNavLink)`
   font-weight: 600;
   padding: 0.75rem 1.5rem;
   border-radius: 12px;
-  transition: background 0.3s, color 0.3s, transform 0.2s;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+  min-width: 100px;
+  text-align: center;
+
   &:hover {
     background: ${({ theme }) => theme.primaryHover || '#4299e1'};
     color: white;
@@ -101,15 +114,14 @@ const StyledNavLink = styled(MotionNavLink)`
     outline: 2px solid ${({ theme }) => theme.primary || '#2b6cb0'};
     outline-offset: 2px;
   }
-  @media screen and (max-width: 768px) {
+
+  @media (max-width: 768px) {
     font-size: 0.95rem;
     padding: 0.5rem 1rem;
-    width: 100%;
-    text-align: center;
-  }
-  @media screen and (min-width: 1280px) {
-    font-size: 1.2rem;
-    padding: 0.75rem 2rem;
+    min-height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 `;
 
@@ -122,7 +134,9 @@ const LanguageSelect = styled(motion.select)`
   font-size: 1rem;
   font-weight: 500;
   cursor: pointer;
-  transition: background 0.3s, color 0.3s;
+  min-height: 48px;
+  min-width: 80px;
+
   &:hover {
     background: ${({ theme }) => theme.primaryHover || '#4299e1'};
     color: white;
@@ -131,7 +145,8 @@ const LanguageSelect = styled(motion.select)`
     outline: 2px solid ${({ theme }) => theme.primary || '#2b6cb0'};
     outline-offset: 2px;
   }
-  @media screen and (max-width: 768px) {
+
+  @media (max-width: 768px) {
     font-size: 0.9rem;
     padding: 0.4rem 0.8rem;
   }
@@ -139,28 +154,23 @@ const LanguageSelect = styled(motion.select)`
 
 const Button = styled(motion.button)`
   padding: 0.75rem 1.75rem;
-  background: linear-gradient(
-    90deg,
-    ${({ theme }) => theme.primary || '#2b6cb0'} 0%,
-    ${({ theme }) => theme.primaryLight || '#63b3ed'} 100%
-  );
+  background: linear-gradient(90deg, ${({ theme }) => theme.primary || '#2b6cb0'} 0%, ${({ theme }) => theme.primaryLight || '#63b3ed'} 100%);
   color: white;
   border: none;
   border-radius: 12px;
   font-size: 1.1rem;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.3s, transform 0.2s;
+  transition: all 0.3s ease;
+  min-height: 48px;
+  white-space: nowrap;
+
   &:hover {
-    background: linear-gradient(
-      90deg,
-      ${({ theme }) => theme.primaryHover || '#2c5282'} 0%,
-      ${({ theme }) => theme.primaryLightHover || '#4299e1'} 100%
-    );
+    background: linear-gradient(90deg, ${({ theme }) => theme.primaryHover || '#2c5282'} 0%, ${({ theme }) => theme.primaryLightHover || '#4299e1'} 100%);
     transform: translateY(-2px);
   }
   &:disabled {
-    background: ${({ theme }) => theme.disabled || '#a0aec0'};
+    background: #a0aec0;
     cursor: not-allowed;
     transform: none;
   }
@@ -168,14 +178,12 @@ const Button = styled(motion.button)`
     outline: 2px solid ${({ theme }) => theme.primary || '#2b6cb0'};
     outline-offset: 2px;
   }
-  @media screen and (max-width: 768px) {
+
+  @media (max-width: 768px) {
     font-size: 0.95rem;
-    padding: 0.5rem 1rem;
-    width: 100%;
-  }
-  @media screen and (min-width: 1280px) {
-    font-size: 1.2rem;
-    padding: 0.75rem 2rem;
+    padding: 0 1rem;
+    flex: 1;
+    min-width: 100px;
   }
 `;
 
@@ -186,7 +194,6 @@ const DropdownContainer = styled.div`
 
 const DropdownButton = styled(motion.button)`
   color: ${({ theme }) => theme.primary || '#2b6cb0'};
-  text-decoration: none;
   font-size: 1.1rem;
   font-weight: 600;
   padding: 0.75rem 1.5rem;
@@ -194,7 +201,10 @@ const DropdownButton = styled(motion.button)`
   border: none;
   background: transparent;
   cursor: pointer;
-  transition: background 0.3s, color 0.3s, transform 0.2s;
+  transition: all 0.3s ease;
+  min-height: 48px;
+  white-space: nowrap;
+
   &:hover {
     background: ${({ theme }) => theme.primaryHover || '#4299e1'};
     color: white;
@@ -204,11 +214,12 @@ const DropdownButton = styled(motion.button)`
     outline: 2px solid ${({ theme }) => theme.primary || '#2b6cb0'};
     outline-offset: 2px;
   }
-  @media screen and (max-width: 768px) {
+
+  @media (max-width: 768px) {
     font-size: 0.95rem;
-    padding: 0.5rem 1rem;
-    width: 100%;
-    text-align: center;
+    padding: 0 1rem;
+    flex: 1;
+    min-width: 120px;
   }
 `;
 
@@ -221,7 +232,9 @@ const DropdownItem = styled(MotionDropdownItem)`
   padding: 0.75rem 1.5rem;
   font-size: 1rem;
   font-weight: 500;
-  transition: background 0.3s, color 0.3s;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+
   &:hover {
     background: ${({ theme }) => theme.primaryHover || '#4299e1'};
     color: white;
@@ -242,9 +255,18 @@ const DropdownMenu = styled(motion.div)`
   z-index: 1000;
   min-width: 200px;
   overflow: hidden;
-  @media screen and (max-width: 768px) {
-    position: static;
+
+  @media (max-width: 768px) {
+    position: fixed;
+    top: auto;
+    bottom: 0;
+    left: 0;
+    right: 0;
     width: 100%;
+    border-radius: 12px 12px 0 0;
+    box-shadow: 0 -4px 20px rgba(0,0,0,0.2);
+    max-height: 60vh;
+    overflow-y: auto;
   }
 `;
 
@@ -260,14 +282,11 @@ const Main = styled(motion.main)`
   background: ${({ theme }) => theme.card || '#ffffff'};
   border-radius: 12px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
-  @media screen and (max-width: 768px) {
+
+  @media (max-width: 768px) {
     padding: 1rem;
     margin: 1rem 0.5rem;
     border-radius: 8px;
-  }
-  @media screen and (min-width: 1280px) {
-    padding: 3rem;
-    margin: 2rem auto;
   }
 `;
 
@@ -291,14 +310,15 @@ const LoadingSpinner = styled(motion.div)`
   width: 40px;
   height: 40px;
   animation: spin 1s linear infinite;
-  @media screen and (max-width: 768px) {
+
+  @media (max-width: 768px) {
     width: 32px;
     height: 32px;
     border-width: 3px;
   }
+
   @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+    to { transform: rotate(360deg); }
   }
 `;
 
@@ -315,15 +335,6 @@ const ErrorWrapper = styled.div`
   text-align: center;
   gap: 1rem;
   padding: 1.5rem;
-  @media screen and (max-width: 768px) {
-    font-size: 1rem;
-    gap: 0.75rem;
-    padding: 1rem;
-  }
-  @media screen and (min-width: 1280px) {
-    font-size: 1.5rem;
-    gap: 1.5rem;
-  }
 `;
 
 const App = () => {
@@ -334,46 +345,40 @@ const App = () => {
   const location = useLocation();
   const [authLoading, setAuthLoading] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
 
-  // Role-based navigation configuration
+  // PWA Install Prompt
+  useEffect(() => {
+    const handler = (e) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handler);
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
   const roleBasedNav = {
     admin: { path: '/admin/dashboard', label: 'Dashboard' },
     buyer: { path: '/market', label: 'Market' },
     fisherman: { path: '/fisherman-dashboard', label: 'Fisherman Dashboard' },
   };
 
-  // Allowed paths for each role to prevent unwanted redirects
   const allowedPathsByRole = {
     admin: ['/admin/dashboard', '/admin/users', '/admin/catch-logs', '/profile', '/privacy', '/catch-details'],
     buyer: ['/market', '/profile', '/privacy', '/catch-details'],
     fisherman: ['/fisherman-dashboard', '/log-catch', '/my-catches', '/profile', '/privacy', '/catch-details'],
   };
 
-  // Debug auth state
   useEffect(() => {
-    console.log('[App] Auth State:', { user, loading, error, isOnline });
-    console.log('[App] User Email:', user?.email || 'Not provided');
-    console.log('[App] Current Path:', location.pathname);
-  }, [user, loading, error, isOnline, location.pathname]);
-
-  // Handle auth redirects
-  useEffect(() => {
-    if (loading || authLoading) {
-      console.log('[App] Loading auth, skipping redirect');
-      return;
-    }
+    if (loading || authLoading) return;
     if (user) {
       const redirectPath = roleBasedNav[user.role]?.path || '/';
       const allowedPaths = allowedPathsByRole[user.role] || ['/'];
       const isCatchDetailsPath = location.pathname.startsWith('/catch-details/');
       if (!allowedPaths.includes(location.pathname) && !isCatchDetailsPath) {
-        console.log('[App] Redirecting to:', redirectPath, 'for role:', user.role);
         navigate(redirectPath, { replace: true });
-      } else {
-        console.log('[App] No redirect needed, on allowed path:', location.pathname);
       }
-    } else if (location.pathname !== '/login' && location.pathname !== '/register' && location.pathname !== '/') {
-      console.log('[App] Redirecting to /login: No user');
+    } else if (!['/login', '/register', '/'].includes(location.pathname)) {
       navigate('/login', { replace: true });
     }
   }, [user, loading, authLoading, navigate, location.pathname]);
@@ -385,13 +390,8 @@ const App = () => {
       await logout();
       navigate('/login', { replace: true });
     } catch (err) {
-      console.error('[App] Logout error:', {
-        message: err.message,
-        status: err.response?.status,
-        data: err.response?.data,
-      });
       Sentry.captureException(err);
-      setError(err.response?.data?.message || 'Logout failed. Please try again.');
+      setError(err.response?.data?.message || 'Logout failed.');
     } finally {
       setAuthLoading(false);
     }
@@ -402,35 +402,20 @@ const App = () => {
     localStorage.setItem('i18nextLng', lng);
   };
 
-  // Show error for network or auth issues
   if (error || !isOnline) {
     return (
       <ErrorWrapper theme={theme}>
-        <div>{error || t('app.offline', 'You are offline. Please connect to the internet.')}</div>
-        <Button
-          onClick={() => {
-            setError(null);
-            window.location.reload();
-          }}
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          aria-label={t('app.retry', 'Retry')}
-        >
+        <div>{error || t('app.offline', 'You are offline.')}</div>
+        <Button onClick={() => window.location.reload()}>
           {t('app.retry', 'Retry')}
         </Button>
       </ErrorWrapper>
     );
   }
 
-  // Show loading overlay during initial auth check
   if (loading || authLoading) {
     return (
-      <LoadingOverlay
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        transition={{ duration: 0.2 }}
-      >
+      <LoadingOverlay>
         <LoadingSpinner theme={theme} />
       </LoadingOverlay>
     );
@@ -440,149 +425,76 @@ const App = () => {
     <AppWrapper theme={theme}>
       <Header theme={theme}>
         <Nav>
-          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', justifyContent: 'center' }}>
-            <StyledNavLink
-              to="/"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              aria-label={t('app.home', 'Home')}
-            >
-              {t('app.home', 'Home')}
-            </StyledNavLink>
+          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'nowrap', overflowX: 'auto', padding: '0.25rem 0' }}>
+            <StyledNavLink to="/">{t('app.home', 'Home')}</StyledNavLink>
             {user && (
               <>
-                <StyledNavLink
-                  to={roleBasedNav[user.role]?.path}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  aria-label={t(roleBasedNav[user.role]?.label)}
-                >
+                <StyledNavLink to={roleBasedNav[user.role]?.path}>
                   {t(roleBasedNav[user.role]?.label)}
                 </StyledNavLink>
                 {user.role === 'admin' && (
                   <DropdownContainer>
-                    <DropdownButton
-                      onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      aria-label={t('app.adminTools', 'Admin Tools')}
-                    >
-                      {t('app.adminTools', 'Admin Tools')}
+                    <DropdownButton onClick={() => setIsDropdownOpen(!isDropdownOpen)}>
+                      {t('app.adminTools', 'Admin')}
                     </DropdownButton>
                     {isDropdownOpen && (
-                      <DropdownMenu
-                        initial={{ opacity: 0, y: -10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
-                        transition={{ duration: 0.2 }}
-                      >
-                        <DropdownItem
-                          to="/admin/users"
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
-                          aria-label={t('app.manageUsers', 'Manage Users')}
-                          onClick={() => setIsDropdownOpen(false)}
-                        >
-                          {t('app.manageUsers', 'Manage Users')}
+                      <DropdownMenu>
+                        <DropdownItem to="/admin/users" onClick={() => setIsDropdownOpen(false)}>
+                          {t('app.manageUsers', 'Users')}
                         </DropdownItem>
-                        <DropdownItem
-                          to="/admin/catch-logs"
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
-                          aria-label={t('app.catchLogs', 'Catch Logs')}
-                          onClick={() => setIsDropdownOpen(false)}
-                        >
-                          {t('app.catchLogs', 'Catch Logs')}
+                        <DropdownItem to="/admin/catch-logs" onClick={() => setIsDropdownOpen(false)}>
+                          {t('app.catchLogs', 'Logs')}
                         </DropdownItem>
                       </DropdownMenu>
                     )}
                   </DropdownContainer>
                 )}
-                <StyledNavLink
-                  to="/profile"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  aria-label={t('app.profile', 'Profile')}
-                >
-                  {t('app.profile', 'Profile')}
-                </StyledNavLink>
-                <StyledNavLink
-                  to="/privacy"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  aria-label={t('app.privacy', 'Privacy')}
-                >
-                  {t('app.privacy', 'Privacy')}
-                </StyledNavLink>
+                <StyledNavLink to="/profile">{t('app.profile', 'Profile')}</StyledNavLink>
+                <StyledNavLink to="/privacy">{t('app.privacy', 'Privacy')}</StyledNavLink>
               </>
             )}
           </div>
-          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', justifyContent: 'center' }}>
+
+          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'nowrap' }}>
             <LanguageSelect
               onChange={(e) => changeLanguage(e.target.value)}
               value={i18n.language}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              aria-label={t('app.language', 'Language')}
             >
               <option value="en">EN</option>
               <option value="sw">SW</option>
             </LanguageSelect>
-            {user ? (
+
+            {deferredPrompt && !user && (
               <Button
-                onClick={handleLogout}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                disabled={authLoading}
-                aria-label={t('app.logout', 'Logout')}
+                onClick={() => {
+                  deferredPrompt.prompt();
+                  deferredPrompt.userChoice.then(() => {
+                    toast.success("Installed!");
+                    setDeferredPrompt(null);
+                  });
+                }}
+                style={{ background: '#10b981' }}
               >
+                Install
+              </Button>
+            )}
+
+            {user ? (
+              <Button onClick={handleLogout} disabled={authLoading}>
                 {t('app.logout', 'Logout')}
               </Button>
             ) : (
               <>
-                <StyledNavLink
-                  to="/login"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  aria-label={t('app.login', 'Login')}
-                >
-                  {t('app.login', 'Login')}
-                </StyledNavLink>
-                <StyledNavLink
-                  to="/register"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  aria-label={t('app.register', 'Register')}
-                >
-                  {t('app.register', 'Register')}
-                </StyledNavLink>
+                <StyledNavLink to="/login">{t('app.login', 'Login')}</StyledNavLink>
+                <StyledNavLink to="/register">{t('app.register', 'Register')}</StyledNavLink>
               </>
             )}
           </div>
         </Nav>
       </Header>
-      <Main
-        variants={pageVariants}
-        initial="initial"
-        animate="animate"
-        exit="exit"
-        transition={pageTransition}
-      >
-        <ErrorBoundary
-          fallback={
-            <ErrorWrapper theme={theme}>
-              <div>{t('app.error', 'An error occurred while loading this page.')}</div>
-              <Button
-                onClick={() => window.location.reload()}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                aria-label={t('app.retry', 'Retry')}
-              >
-                {t('app.retry', 'Retry')}
-              </Button>
-            </ErrorWrapper>
-          }
-        >
+
+      <Main variants={pageVariants} initial="initial" animate="animate" exit="exit" transition={pageTransition}>
+        <ErrorBoundary fallback={<ErrorWrapper theme={theme}><div>{t('app.error')}</div><Button onClick={() => window.location.reload()}>{t('app.retry')}</Button></ErrorWrapper>}>
           <Routes>
             <Route index element={<Home />} />
             <Route path="login" element={<Login />} />
@@ -602,6 +514,8 @@ const App = () => {
           </Routes>
         </ErrorBoundary>
       </Main>
+
+      <ToastContainer position="bottom-center" theme={theme.mode} />
     </AppWrapper>
   );
 };

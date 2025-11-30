@@ -1,262 +1,379 @@
-import React, { useState, useEffect } from 'react';
+// src/pages/Market.jsx
+import React, { useState, useEffect, useContext } from 'react';
 import { useTranslation } from 'react-i18next';
 import styled from 'styled-components';
-import { motion, AnimatePresence } from 'framer-motion';
-import axios from 'axios';
-import * as Sentry from '@sentry/react';
+import { motion } from 'framer-motion';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faInfoCircle } from '@fortawesome/free-solid-svg-icons';
-import { Tooltip } from 'react-tooltip';
+import {
+  faFish, faQrcode, faMoneyBillWave, faMapMarkerAlt,
+  faCheckCircle, faUser, faClock, faShieldAlt
+} from '@fortawesome/free-solid-svg-icons';
+import axios from 'axios';
+import { toast, ToastContainer, Slide } from 'react-toastify';
+import QRCode from 'react-qr-code';
+import { AuthContext } from '../context/AuthContext';
+import * as Sentry from '@sentry/react';
 
-const MarketWrapper = styled.div`
-  padding: clamp(1rem, 3vw, 2rem);
-  background: ${({ theme }) => theme.background || '#F1F5F9'};
+// SAME PROFESSIONAL DESIGN AS ADMIN DASHBOARD — NO SIDEBAR
+const PageWrapper = styled.div`
   min-height: 100vh;
-  @media (maxWidth: 768px) {
-    padding: clamp(0.5rem, 2vw, 1rem);
+  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+  font-family: 'Inter', sans-serif;
+  padding: 2rem;
+`;
+
+const Header = styled.div`
+  text-align: center;
+  background: white;
+  padding: 2.5rem 2rem;
+  border-radius: 24px;
+  box-shadow: 0 15px 40px rgba(0,0,0,0.1);
+  margin-bottom: 3rem;
+  max-width: 1200px;
+  margin-left: auto;
+  margin-right: auto;
+`;
+
+const Title = styled.h1`
+  font-size: 3.2rem;
+  font-weight: 900;
+  color: #0f172a;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+`;
+
+const Subtitle = styled.p`
+  font-size: 1.6rem;
+  color: #475569;
+  margin: 1rem 0 0;
+  font-weight: 600;
+`;
+
+const SearchBar = styled.input`
+  width: 100%;
+  max-width: 700px;
+  margin: 0 auto 3rem;
+  padding: 1.4rem 2rem;
+  font-size: 1.3rem;
+  border: 3px solid #e2e8f0;
+  border-radius: 20px;
+  display: block;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+  &:focus {
+    outline: none;
+    border-color: #10b981;
+    box-shadow: 0 0 0 6px rgba(16, 185, 129, 0.2);
   }
 `;
 
-const FilterSection = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: clamp(0.5rem, 2vw, 1rem);
-  margin-bottom: 1rem;
-`;
-
-const Input = styled.input`
-  padding: 0.5rem;
-  border: 1px solid ${({ theme }) => theme.border || '#D1D5DB'};
-  border-radius: 8px;
-  font-size: clamp(0.9rem, 2vw, 1rem);
-`;
-
-const Select = styled.select`
-  padding: 0.5rem;
-  border: 1px solid ${({ theme }) => theme.border || '#D1D5DB'};
-  border-radius: 8px;
-  font-size: clamp(0.9rem, 2vw, 1rem);
+const Section = styled.div`
+  background: white;
+  padding: 3rem;
+  border-radius: 28px;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.1);
+  max-width: 1400px;
+  margin: 0 auto 3rem;
 `;
 
 const ProductGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+  gap: 2.5rem;
 `;
 
 const ProductCard = styled(motion.div)`
-  border: 1px solid ${({ theme }) => theme.border || '#D1D5DB'};
-  border-radius: 8px;
-  padding: 1rem;
-  background: ${({ theme }) => theme.card || '#ffffff'};
-`;
-
-const OrderButton = styled(motion.button)`
-  background: linear-gradient(90deg, #1E3A8A 0%, #3B82F6 100%);
-  color: white;
-  border: none;
-  padding: 0.75rem;
-  border-radius: 8px;
-  cursor: pointer;
-  width: 100%;
-  &:disabled {
-    background: #6B7280;
-    cursor: not-allowed;
+  background: white;
+  border-radius: 28px;
+  overflow: hidden;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.15);
+  border: 4px solid transparent;
+  transition: all 0.4s ease;
+  &:hover {
+    transform: translateY(-16px);
+    border-color: #10b981;
+    box-shadow: 0 35px 80px rgba(16, 185, 129, 0.3);
   }
 `;
 
-const ErrorMessage = styled(motion.p)`
-  background: #fee2e2;
-  color: #991b1b;
-  padding: 0.75rem;
-  border-radius: 8px;
-  text-align: center;
+const ProductImage = styled.div`
+  height: 280px;
+  background: url(${props => props.src || '/assets/fish-placeholder.jpg'}) center/cover no-repeat;
+  position: relative;
 `;
 
-const SuccessMessage = styled(motion.p)`
-  background: #d1fae5;
-  color: #065f46;
-  padding: 0.75rem;
-  border-radius: 8px;
-  text-align: center;
+const VerifiedBadge = styled.div`
+  position: absolute;
+  top: 1.5rem;
+  right: 1.5rem;
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: white;
+  padding: 0.8rem 1.5rem;
+  border-radius: 50px;
+  font-weight: 800;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.5);
+`;
+
+const CardContent = styled.div`
+  padding: 2.5rem;
+`;
+
+const Species = styled.h3`
+  font-size: 2.4rem;
+  font-weight: 900;
+  color: #0f172a;
+  margin: 0 0 1.2rem;
+`;
+
+const Price = styled.div`
+  font-size: 3.2rem;
+  font-weight: 900;
+  color: #10b981;
+  margin: 1.8rem 0;
+`;
+
+const Info = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  color: #475569;
+  margin: 1rem 0;
+  font-size: 1.2rem;
+  font-weight: 600;
+`;
+
+const BuyButton = styled(motion.button)`
+  width: 100%;
+  padding: 1.6rem;
+  border: none;
+  border-radius: 20px;
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: white;
+  cursor: pointer;
+  margin-top: 1.5rem;
+  background: ${props => props.danger ? '#ef4444' : 'linear-gradient(135deg, #10b981, #059669)'};
+  box-shadow: 0 12px 35px rgba(16, 185, 129, 0.4);
 `;
 
 const Market = () => {
   const { t } = useTranslation();
-  const [products, setProducts] = useState([]);
-  const [filters, setFilters] = useState({ species: '', price_min: '', price_max: '', location: '' });
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [orderData, setOrderData] = useState({ product_id: null, quantity: '', phone: '' });
+  const { user } = useContext(AuthContext);
+  const [catches, setCatches] = useState([]);
+  const [search, setSearch] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [qrItem, setQrItem] = useState(null);
 
   useEffect(() => {
-    const fetchProducts = async () => {
-      setLoading(true);
+    const fetchApprovedCatches = async () => {
       try {
         const token = localStorage.getItem('auth_token');
-        const params = {};
-        if (filters.species) params.species = filters.species;
-        if (filters.price_min) params.price_min = filters.price_min;
-        if (filters.price_max) params.price_max = filters.price_max;
-        if (filters.location) params.location = filters.location;
 
-        const response = await axios.get(`${import.meta.env.VITE_API_URL}/products`, {
-          headers: { Authorization: `Bearer ${token}` },
-          params,
+        // THIS IS THE ONLY CORRECT WAY — GETS ALL APPROVED CATCHES
+        const res = await axios.get(`${import.meta.env.VITE_API_URL}/admin/catches`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+          params: { status: 'approved' }
         });
-        setProducts(response.data.products || []);
-        setError('');
+
+        console.log('Raw data from API:', res.data); // ← CHECK THIS IN CONSOLE
+
+        const approved = (res.data || [])
+          .filter(c => c.status === 'approved' && (c.weight > 0 || c.batch_size > 0))
+          .map(c => ({
+            id: c.catch_id,
+            species: c.species || 'Samaki',
+            weight: c.weight || c.batch_size || 0,
+            price_per_kg: Number(c.price) || 0,
+            harvest_date: c.harvest_date,
+            fisherman_name: c.fisherman_name || c.user?.name || 'Mvuvi FishKE',
+            images: c.image_urls || [],
+            location: 'Kenya',
+          }));
+
+        console.log('Approved catches for market:', approved);
+        setCatches(approved);
       } catch (err) {
-        console.error('[Market] Fetch error:', err.message);
+        console.error('Market fetch failed:', err.response || err);
+        toast.error("Imeshindwa kupakia soko");
         Sentry.captureException(err);
-        setError(t('market.errors.fetch'));
       } finally {
         setLoading(false);
       }
     };
-    fetchProducts();
-  }, [filters, t]);
 
-  const handleFilterChange = (e) => {
-    setFilters({ ...filters, [e.target.name]: e.target.value });
-    setError('');
-    setSuccess('');
-  };
+    fetchApprovedCatches();
+  }, []);
 
-  const handleOrderChange = (productId, field, value) => {
-    setOrderData({ ...orderData, product_id: productId, [field]: value });
-  };
+  const filtered = catches.filter(item =>
+    item.species.toLowerCase().includes(search.toLowerCase()) ||
+    item.fisherman_name.toLowerCase().includes(search.toLowerCase())
+  );
 
-  const handleOrder = async (productId) => {
-    if (!orderData.quantity || !orderData.phone) {
-      setError(t('market.errors.missingFields'));
+  const triggerMpesa = async (item) => {
+    if (!user) {
+      toast.error("Ingia kwanza ili ununue");
       return;
     }
-    setLoading(true);
+
+    toast.loading("Inasubiri M-Pesa...");
+
     try {
-      const token = localStorage.getItem('auth_token');
-      await axios.post(
-        `${import.meta.env.VITE_API_URL}/orders`,
-        { product_id: productId, quantity: parseFloat(orderData.quantity), phone: orderData.phone },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      setProducts(products.map(p => p.id === productId ? { ...p, quantity: p.quantity - parseFloat(orderData.quantity) } : p));
-      setSuccess(t('market.success.order'));
-      setError('');
-      setOrderData({ product_id: null, quantity: '', phone: '' });
+      await axios.post(`${import.meta.env.VITE_API_URL}/mpesa/stk`, {
+        phone: user.national_id?.replace('+', '') || user.phone,
+        amount: item.price_per_kg * 10,
+        catch_id: item.id,
+      }, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('auth_token')}` }
+      });
+
+      toast.dismiss();
+      toast.success("Malipo yameanza! Angalia simu yako");
     } catch (err) {
-        console.error('[Market] Order error:', err.message);
-        Sentry.captureException(err);
-        setError(t('market.errors.order'));
-        setSuccess('');
-    } finally {
-        setLoading(false);
+      toast.dismiss();
+      toast.error("Malipo yameshindwa");
     }
-};
+  };
 
   return (
-    <MarketWrapper>
-      <h2>{t('market.title')}</h2>
-      <AnimatePresence>
-        {error && (
-          <ErrorMessage initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-            {error}
-          </ErrorMessage>
-        )}
-        {success && (
-          <SuccessMessage initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-            {success}
-          </SuccessMessage>
-        )}
-      </AnimatePresence>
-      <FilterSection>
-        <Input
+    <>
+      <PageWrapper>
+        <Header>
+          <Title>
+            <FontAwesomeIcon icon={faFish} /> FishKE Market
+          </Title>
+          <Subtitle>
+            Samaki Safi • Imeidhinishwa na Serikali • Moja kwa Moja kutoka Bahari
+          </Subtitle>
+        </Header>
+
+        <input
           type="text"
-          name="species"
-          placeholder={t('market.filters.species')}
-          value={filters.species}
-          onChange={handleFilterChange}
-          data-tooltip-id="species-tip"
-          data-tooltip-content={t('market.tooltips.species')}
+          placeholder="Tafuta: Tilapia, Dagaa, Samaki Mkubwa, Mvuvi..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          style={{
+            width: '100%',
+            maxWidth: '800px',
+            margin: '0 auto 3rem',
+            display: 'block',
+            padding: '1.5rem 2rem',
+            fontSize: '1.4rem',
+            borderRadius: '24px',
+            border: '3px solid #e2e8f0',
+            boxShadow: '0 15px 40px rgba(0,0,0,0.1)',
+          }}
         />
-        <Tooltip id="species-tip" />
-        <Input
-          type="number"
-          name="price_min"
-          placeholder={t('market.filters.priceMin')}
-          value={filters.price_min}
-          onChange={handleFilterChange}
-          data-tooltip-id="price-min-tip"
-          data-tooltip-content={t('market.tooltips.priceMin')}
-        />
-        <Tooltip id="price-min-tip" />
-        <Input
-          type="number"
-          name="price_max"
-          placeholder={t('market.filters.priceMax')}
-          value={filters.price_max}
-          onChange={handleFilterChange}
-          data-tooltip-id="price-max-tip"
-          data-tooltip-content={t('market.tooltips.priceMax')}
-        />
-        <Tooltip id="price-max-tip" />
-        <Select name="location" value={filters.location} onChange={handleFilterChange}>
-          <option value="">{t('market.filters.location')}</option>
-          <option value="Mombasa">Mombasa</option>
-          <option value="Nairobi">Nairobi</option>
-          <option value="Kisumu">Kisumu</option>
-        </Select>
-      </FilterSection>
-      <ProductGrid>
-        {products.map(product => (
-          <ProductCard
-            key={product.id}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.3 }}
+
+        <Section>
+          <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
+            <h2 style={{ fontSize: '2.5rem', fontWeight: '900', color: '#0f172a' }}>
+              Samaki Zilizoidhinishwa ({filtered.length})
+            </h2>
+          </div>
+
+          {loading ? (
+            <div style={{ textAlign: 'center', padding: '6rem' }}>
+              <FontAwesomeIcon icon={faFish} size="5x" spin color="#10b981" />
+              <p style={{ fontSize: '1.8rem', marginTop: '2rem' }}>Inapakia samaki safi kutoka baharini...</p>
+            </div>
+          ) : filtered.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '8rem', color: '#64748b' }}>
+              <FontAwesomeIcon icon={faFish} size="6x" />
+              <h2 style={{ fontSize: '2.5rem', margin: '2rem 0' }}>Hakuna samaki sasa hivi</h2>
+              <p style={{ fontSize: '1.5rem' }}>Wavuvi wanaloga kesho asubuhi. Rudi baadaye!</p>
+            </div>
+          ) : (
+            <ProductGrid>
+              {filtered.map(item => (
+                <ProductCard
+                  key={item.id}
+                  initial={{ opacity: 0, y: 60 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  whileHover={{ scale: 1.04 }}
+                >
+                  <ProductImage src={item.images[0]}>
+                    <VerifiedBadge>
+                      <FontAwesomeIcon icon={faShieldAlt} /> IMEIDHINISHWA
+                    </VerifiedBadge>
+                  </ProductImage>
+
+                  <CardContent>
+                    <Species>{item.species.toUpperCase()}</Species>
+
+                    <Info>
+                      <FontAwesomeIcon icon={faUser} /> {item.fisherman_name}
+                    </Info>
+                    <Info>
+                      <FontAwesomeIcon icon={faMapMarkerAlt} /> {item.location}
+                    </Info>
+                    <Info>
+                      <FontAwesomeIcon icon={faClock} /> {new Date(item.harvest_date).toLocaleDateString('sw-KE')}
+                    </Info>
+
+                    <Price>KES {item.price_per_kg.toLocaleString()}/kg</Price>
+
+                    <div style={{ fontSize: '1.5rem', fontWeight: '800', color: '#0f172a' }}>
+                      Jumla: {item.weight}kg
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '1rem', marginTop: '2rem' }}>
+                      <BuyButton onClick={() => triggerMpesa(item)}>
+                        <FontAwesomeIcon icon={faMoneyBillWave} /> NUNUA SASA
+                      </BuyButton>
+                      <BuyButton bg="#7c3aed" onClick={() => setQrItem(item)}>
+                        <FontAwesomeIcon icon={faQrcode} /> QR CODE
+                      </BuyButton>
+                    </div>
+                  </CardContent>
+                </ProductCard>
+              ))}
+            </ProductGrid>
+          )}
+        </Section>
+      </PageWrapper>
+
+      {/* QR Modal */}
+      {qrItem && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.97)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          onClick={() => setQrItem(null)}
+        >
+          <motion.div
+            initial={{ scale: 0.8 }}
+            animate={{ scale: 1 }}
+            style={{ background: 'white', padding: '4rem', borderRadius: '40px', textAlign: 'center', maxWidth: '90vw' }}
+            onClick={e => e.stopPropagation()}
           >
-            <img
-              src={product.image || '/assets/fallback-fish.jpg'}
-              alt={product.species}
-              style={{ width: '100%', borderRadius: '8px', maxHeight: '150px', objectFit: 'cover' }}
-            />
-            <h3>{product.species} ({product.type})</h3>
-            <p>{t('market.quantity')}: {product.quantity} kg</p>
-            <p>{t('market.price')}: KES {product.price}</p>
-            <p>{t('market.location')}: {product.location}</p>
-            <Input
-              type="number"
-              placeholder={t('market.orderQuantity')}
-              min="1"
-              max={product.quantity}
-              value={orderData.product_id === product.id ? orderData.quantity : ''}
-              onChange={(e) => handleOrderChange(product.id, 'quantity', e.target.value)}
-              disabled={loading || !product.quantity}
-            />
-            <Input
-              type="text"
-              placeholder={t('market.phone')}
-              value={orderData.product_id === product.id ? orderData.phone : ''}
-              onChange={(e) => handleOrderChange(product.id, 'phone', e.target.value)}
-              disabled={loading}
-              data-tooltip-id="phone-tip"
-              data-tooltip-content={t('market.tooltips.phone')}
-            />
-            <Tooltip id="phone-tip" />
-            <OrderButton
-              onClick={() => handleOrder(product.id)}
-              disabled={loading || !product.quantity}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              {t('market.order')}
-            </OrderButton>
-          </ProductCard>
-        ))}
-      </ProductGrid>
-      {loading && <p>{t('market.loading')}</p>}
-    </MarketWrapper>
+            <h2 style={{ fontSize: '3rem', fontWeight: '900', color: '#10b981', marginBottom: '2rem' }}>
+              BLOCKCHAIN TRACE
+            </h2>
+            <QRCode value={`https://fishke.io/trace/${qrItem.id}`} size={340} />
+            <div style={{ marginTop: '2.5rem' }}>
+              <p style={{ fontSize: '4rem', fontWeight: '900', color: '#10b981' }}>
+                KES {(qrItem.price_per_kg * 10).toLocaleString()}
+              </p>
+              <p style={{ fontSize: '2rem', fontWeight: '700' }}>{qrItem.species} • 10kg</p>
+              <p style={{ color: '#64748b', marginTop: '1rem' }}>
+                {qrItem.fisherman_name} • Imeidhinishwa
+              </p>
+            </div>
+            <BuyButton danger onClick={() => setQrItem(null)}>
+              FUNGA
+            </BuyButton>
+          </motion.div>
+        </motion.div>
+      )}
+
+      <ToastContainer position="bottom-center" transition={Slide} />
+    </>
   );
 };
 

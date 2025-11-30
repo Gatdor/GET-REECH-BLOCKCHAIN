@@ -20,10 +20,10 @@ async function main() {
         const wallet = await Wallets.newFileSystemWallet(walletPath);
 
         // Enroll admin if not already enrolled
-        const adminIdentity = await wallet.get('admin');
+        const adminIdentity = await wallet.get('Org1admin');
         if (!adminIdentity) {
             console.log('Enrolling admin...');
-            const enrollment = await ca.enroll({ enrollmentID: 'admin', enrollmentSecret: 'adminpw' });
+            const enrollment = await ca.enroll({ enrollmentID: 'Org1admin', enrollmentSecret: 'adminpw' });
             const x509Identity = {
                 credentials: {
                     certificate: enrollment.certificate,

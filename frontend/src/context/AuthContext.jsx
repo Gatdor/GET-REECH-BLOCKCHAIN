@@ -3,6 +3,8 @@ import PropTypes from 'prop-types';
 import axios from 'axios';
 import * as Sentry from '@sentry/react';
 import { get, set } from 'idb-keyval';
+import { v4 as uuidv4 } from 'uuid';
+
 
 export const AuthContext = createContext();
 
@@ -78,7 +80,7 @@ const createLaravelApiInstance = () => {
 
 const createFabricApiInstance = () => {
   return axios.create({
-    baseURL: 'http://peer0.org1.example.com:8000',
+    baseURL: 'http://localhost:3001/api',
     withCredentials: false,
   });
 };
@@ -96,7 +98,7 @@ export const AuthProvider = ({ children }) => {
     const handleOnline = () => setIsOnline(true);
     const handleOffline = () => setIsOnline(false);
     window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
+    window.removeEventListener('offline', handleOffline);
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
@@ -290,113 +292,131 @@ export const AuthProvider = ({ children }) => {
       document.cookie = 'laravel_session=; Max-Age=0; path=/';
     }
   };
-  async function createCatch(catchData) {
-    if (!user?.id) {
-      const errorMessage = 'User must be logged in to create a catch';
-      console.error('[AuthContext] Create catch error:', errorMessage);
-      Sentry.captureException(new Error(errorMessage), { extra: { action: 'create_catch' } });
-      throw new Error(errorMessage);
+
+const createCatch = async (formData) => {
+  if (!user?.id) throw new Error('User must be logged in');
+
+  try {
+    // DEBUG
+    for (const pair of formData.entries()) {
+      console.log(`[AuthContext] Sending FormData: ${pair[0]} = ${pair[1]}`);
     }
 
-    try {
-      if (isOnline) {
-        await laravelApi.get('/sanctum/csrf-cookie');
-        const response = await laravelApi.post('/catch-logs', {
-          catch_id: catchData.catch_id,
-          user_id: String(user.id),
-          species: catchData.species,
-          dryingMethod: catchData.dryingMethod,
-          batchSize: Number(catchData.batchSize),
-          weight: Number(catchData.weight),
-          harvest_date: catchData.harvest_date || new Date().toISOString().split('T')[0],
-          lat: Number(catchData.lat),
-          lng: Number(catchData.lng),
-          shelf_life: catchData.shelf_life ? Number(catchData.shelf_life) : null,
-          price: catchData.price ? Number(catchData.price) : null,
-          image_urls: catchData.image_urls || null,
-          quality_score: catchData.quality_score ? Number(catchData.quality_score) : null,
-          status: catchData.status || null,
-        });
-        console.debug('[AuthContext] Catch created in Laravel:', response.data);
+    if (isOnline) {
+      // USE laravelApi (already has /api baseURL + CSRF + auth)
+      const laravelResponse = await laravelApi.post('/catches', formData);
+      console.debug('[AuthContext] Laravel success:', laravelResponse.data);
 
-        try {
-          await fabricApi.post('/submit-catch', {
-            catchId: catchData.catch_id,
-            fisherId: String(user.id),
-            species: catchData.species,
-            weight: Number(catchData.weight),
-            date: catchData.harvest_date || new Date().toISOString().split('T')[0],
-          });
-          console.debug('[AuthContext] Catch submitted to Fabric:', catchData.catch_id);
-        } catch (fabricErr) {
-          console.error('[AuthContext] Fabric create catch error:', fabricErr.message, fabricErr.response?.data);
-          Sentry.captureException(fabricErr, { extra: { action: 'submit_catch_fabric', catchData } });
-        }
+      const imageUrls = laravelResponse.data.image_urls || [];
 
-        return response.data;
-      } else {
-        const offlineActions = (await get('offlineActions')) || [];
-        offlineActions.push({
-          type: 'create_catch',
-          data: {
-            catch_id: catchData.catch_id,
-            user_id: String(user.id),
-            species: catchData.species,
-            dryingMethod: catchData.dryingMethod,
-            batchSize: Number(catchData.batchSize),
-            weight: Number(catchData.weight),
-            harvest_date: catchData.harvest_date || new Date().toISOString().split('T')[0],
-            lat: Number(catchData.lat),
-            lng: Number(catchData.lng),
-            shelf_life: catchData.shelf_life ? Number(catchData.shelf_life) : null,
-            price: catchData.price ? Number(catchData.price) : null,
-            image_urls: catchData.image_urls || null,
-            quality_score: catchData.quality_score ? Number(catchData.quality_score) : null,
-            status: catchData.status || null,
-          },
+      const fabricData = {
+        catch_id: laravelResponse.data.catch_id,
+        fisher_id: String(user.id),
+        species: formData.get('species'),
+        drying_method: formData.get('drying_method'),
+        batch_size: Number(formData.get('batch_size')),
+        weight: Number(formData.get('weight')),
+        harvest_date: formData.get('harvest_date'),
+        shelf_life: Number(formData.get('shelf_life')),
+        price: Number(formData.get('price')),
+        lat: Number(formData.get('lat')),
+        lng: Number(formData.get('lng')),
+        images: imageUrls,
+        status: 'pending',
+      };
+
+      try {
+        console.debug('[AuthContext] Sending to Fabric:', fabricData);
+        const fabricRes = await fabricApi.post('/catches', fabricData, {
+          headers: { 'Content-Type': 'application/json' },
         });
-        await set('offlineActions', offlineActions);
-        console.debug('[AuthContext] Catch stored offline:', catchData);
-        return { message: 'Catch stored offline, will sync when online' };
+        console.debug('[AuthContext] Fabric success:', fabricRes.data);
+      } catch (fabricErr) {
+        console.error('[AuthContext] Fabric error:', fabricErr.response?.data || fabricErr);
       }
-    } catch (err) {
-      const errorMessage = err.response?.status === 422
-        ? Object.values(err.response?.data?.errors || {}).flat().join(', ') ||
-        err.response?.data?.message ||
-        'Failed to create catch'
-        : err.response?.data?.message || 'Failed to create catch';
-      console.error('[AuthContext] Create catch error:', errorMessage, err.response?.data);
-      Sentry.captureException(err, { extra: { action: 'create_catch', catchData } });
-      throw new Error(errorMessage);
+
+      return laravelResponse.data;
     }
+
+    // OFFLINE
+    const action_id = `ACTION_${Date.now()}`;
+    const offlineData = { ...Object.fromEntries(formData.entries()), status: 'pending' };
+    const actions = (await get('offlineActions')) || [];
+    actions.push({ type: 'catch_log', action_id, data: offlineData });
+    await set('offlineActions', actions);
+    return { message: 'Saved offline', action_id };
+
+  } catch (err) {
+    console.error('[AuthContext] Create catch error:', err.response?.data || err);
+    const msg =
+      err.response?.status === 422
+        ? Object.values(err.response.data.errors || {}).flat().join(', ')
+        : 'Failed to create catch';
+    throw new Error(msg);
+  }
+};
+
+  const syncOfflineActions = async () => {
+    if (!isOnline) return console.debug('[AuthContext] Offline, cannot sync actions');
+
+    const offlineActions = (await get('offlineActions')) || [];
+    if (!offlineActions.length) return console.debug('[AuthContext] No offline actions to sync');
+
+    for (const action of offlineActions) {
+      try {
+        if (action.type === 'catch_log') {
+          const formData = new FormData();
+          Object.entries(action.data).forEach(([key, value]) => {
+            formData.append(key, value);
+          });
+          await createCatch(formData);
+          console.debug('[AuthContext] Synced offline catch:', action.data);
+        } else if (action.type === 'create_batch') {
+          await createBatch(action.data);
+          console.debug('[AuthContext] Synced offline batch:', action.data);
+        }
+      } catch (err) {
+        console.error('[AuthContext] Sync offline action error:', err.message, action);
+        Sentry.captureException(err, { extra: { action: 'sync_offline', actionData: action } });
+      }
+    }
+
+    await set('offlineActions', []);
+    console.debug('[AuthContext] Offline actions cleared after sync');
+  };
+
+const getCatches = async ({ status } = {}) => {
+    console.log('[getCatches] Called with user:', user); // ← ADD THIS
+  if (!user?.id) {
+    const errorMessage = 'User must be logged in to fetch catches';
+    console.error('[AuthContext] Get catches error:', errorMessage);
+    Sentry.captureException(new Error(errorMessage), { extra: { action: 'get_catches' } });
+    throw new Error(errorMessage);
   }
 
-  const getCatches = async ({ status } = {}) => {
-    if (!user?.id) {
-      const errorMessage = 'User must be logged in to fetch catches';
-      console.error('[AuthContext] Get catches error:', errorMessage);
-      Sentry.captureException(new Error(errorMessage), { extra: { action: 'get_catches' } });
-      throw new Error(errorMessage);
-    }
+  try {
+    const response = await laravelApi.get('/catch-logs', {
+      params: { user_id: String(user.id), status },
+    });
 
-    try {
-      const response = await laravelApi.get('/catch-logs', {
-        params: { user_id: String(user.id), status },
-      });
-      console.debug('[AuthContext] Catches fetched from Laravel:', response.data);
-      return response.data.data || [];
-    } catch (err) {
-      const errorMessage =
-        err.response?.status === 422
-          ? Object.values(err.response?.data?.errors || {}).flat().join(', ') ||
-            err.response?.data?.message ||
-            'Failed to fetch catches'
-          : err.response?.data?.message || 'Failed to fetch catches';
-      console.error('[AuthContext] Get catches error:', errorMessage, err.response?.data);
-      Sentry.captureException(err, { extra: { action: 'get_catches', user_id: user.id, status } });
-      throw new Error(errorMessage);
-    }
-  };
+    console.debug('[AuthContext] Catches fetched from Laravel:', response.data);
+
+    // FIX: Laravel returns array directly → NOT { data: [...] }
+    // So we return response.data (array) or empty array
+    return Array.isArray(response.data) ? response.data : [];
+  } catch (err) {
+    const errorMessage =
+      err.response?.status === 422
+        ? Object.values(err.response?.data?.errors || {}).flat().join(', ') ||
+          err.response?.data?.message ||
+          'Failed to fetch catches'
+        : err.response?.data?.message || 'Failed to fetch catches';
+
+    console.error('[AuthContext] Get catches error:', errorMessage, err.response?.data);
+    Sentry.captureException(err, { extra: { action: 'get_catches', user_id: user.id, status } });
+    throw new Error(errorMessage);
+  }
+};
 
   const getCatchById = async (id) => {
     if (!id) {
@@ -542,43 +562,6 @@ export const AuthProvider = ({ children }) => {
       throw new Error(errorMessage);
     }
   };
-
-  const syncOfflineActions = async () => {
-    if (!isOnline) {
-      console.debug('[AuthContext] Offline, cannot sync actions');
-      return;
-    }
-
-    const offlineActions = (await get('offlineActions')) || [];
-    if (!offlineActions.length) {
-      console.debug('[AuthContext] No offline actions to sync');
-      return;
-    }
-
-    for (const action of offlineActions) {
-      try {
-        if (action.type === 'create_catch') {
-          await createCatch(action.data);
-          console.debug('[AuthContext] Synced offline catch:', action.data);
-        } else if (action.type === 'create_batch') {
-          await createBatch(action.data);
-          console.debug('[AuthContext] Synced offline batch:', action.data);
-        }
-      } catch (err) {
-        console.error('[AuthContext] Sync offline action error:', err.message, action);
-        Sentry.captureException(err, { extra: { action: 'sync_offline', actionData: action } });
-      }
-    }
-
-    await set('offlineActions', []);
-    console.debug('[AuthContext] Offline actions cleared after sync');
-  };
-
-  useEffect(() => {
-    if (isOnline) {
-      syncOfflineActions();
-    }
-  }, [isOnline]);
 
   return (
     <AuthContext.Provider

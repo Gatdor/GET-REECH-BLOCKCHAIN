@@ -1,228 +1,266 @@
-import React, { useContext } from 'react';
+// src/pages/CatchDetails.jsx
+import React, { useContext, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import { useQuery } from '@tanstack/react-query';
+import { StyleSheetManager } from 'styled-components';
+import isPropValid from '@emotion/is-prop-valid';
 import styled from 'styled-components';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faArrowLeft } from '@fortawesome/free-solid-svg-icons';
+import { faArrowLeft, faShareAlt, faPrint } from '@fortawesome/free-solid-svg-icons';
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+import { useReactToPrint } from 'react-to-print';
+import QRCode from 'react-qr-code';
+import FsLightbox from 'fslightbox-react';
+import { DndProvider, useDrag, useDrop } from 'react-dnd';
+import { HTML5Backend } from 'react-dnd-html5-backend';
+import { AuthContext } from '../context/AuthContext';
 import { ThemeContext } from '../context/ThemeContext';
-import { useAuth } from '../context/AuthContext';
 import * as Sentry from '@sentry/react';
 
+// Fix Leaflet icons
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+});
+
+const clampFontSize = (min, vw, max) => `clamp(${min}rem, ${vw}vw, ${max}rem)`;
+
+// Styled Components (same as yours)
 const DetailsWrapper = styled.div`
+  padding: clamp(1rem, 5vw, 2rem);
+  background: ${({ theme }) => theme.background || '#F3F4F6'};
   min-height: 100vh;
-  background: linear-gradient(
-    135deg,
-    ${({ theme }) => theme.background || '#f7fafc'} 0%,
-    ${({ theme }) => theme.backgroundSecondary || '#e2e8f0'} 100%
-  );
-  padding: clamp(1rem, 3vw, 2rem);
+  color: ${({ theme }) => theme.text || '#1F2937'};
 `;
 
-const DetailsCard = styled(motion.div)`
-  background: ${({ theme }) => theme.card || '#ffffff'};
-  padding: clamp(1.5rem, 3vw, 2rem);
+const DetailsCard = styled.div`
   border-radius: 12px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
-  max-width: 800px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+  background: ${({ theme }) => theme.cardBackground || '#FFFFFF'};
+  padding: clamp(1.5rem, 4vw, 2.5rem);
+  max-width: 900px;
   margin: 0 auto;
-  border: 1px solid ${({ theme }) => theme.border || '#edf2f7'};
 `;
 
-const BackButton = styled(motion.button)`
-  background: none;
+const Header = styled.header`
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid #e5e7eb;
+`;
+
+const Title = styled.h1`
+  font-size: ${clampFontSize(1.8, 5, 2.8)};
+  font-weight: 800;
+  color: #10b981;
+`;
+
+const ActionButton = styled(motion.button)`
+  border-radius: 12px;
+  background: ${({ theme }) => theme.primary || '#10b981'};
+  color: white;
+  padding: 0.75rem 1.5rem;
   border: none;
-  color: ${({ theme }) => theme.primary || '#2b6cb0'};
   cursor: pointer;
-  font-size: clamp(0.9rem, 2vw, 1rem);
   font-weight: 600;
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  margin-bottom: 1rem;
-  transition: color 0.3s;
-  &:hover {
-    color: ${({ theme }) => theme.primaryHover || '#4299e1'};
-  }
+  font-size: 1rem;
+  box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
 `;
 
-const Title = styled.h2`
-  font-size: clamp(1.5rem, 3vw, 2rem);
-  font-weight: 700;
-  color: ${({ theme }) => theme.text || '#2d3748'};
-  margin: 0 0 1.5rem;
+const DetailGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+  margin: 2rem 0;
 `;
 
-const DetailItem = styled.p`
-  font-size: clamp(0.9rem, 2vw, 1rem);
-  color: ${({ theme }) => theme.text || '#2d3748'};
-  margin: 0.5rem 0;
+const DetailItem = styled.div`
+  background: #f8fafc;
+  padding: 1rem;
+  border-radius: 12px;
+  p { margin: 0.5rem 0; }
+  strong { color: #0f172a; }
 `;
 
 const ImageGallery = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
   gap: 1rem;
-  margin-top: 1rem;
+  margin: 2rem 0;
 `;
 
-const CatchImage = styled.img`
+const Image = styled.img`
   width: 100%;
-  height: 150px;
+  height: 160px;
   object-fit: cover;
-  border-radius: 8px;
-  border: 1px solid ${({ theme }) => theme.border || '#edf2f7'};
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+  &:hover { transform: scale(1.05); box-shadow: 0 10px 20px rgba(0,0,0,0.2); }
 `;
 
-const ErrorMessage = styled(motion.p)`
-  font-size: clamp(0.8rem, 2vw, 0.875rem);
-  background: #fee2e2;
-  color: #991b1b;
-  padding: clamp(0.5rem, 1.5vw, 0.75rem);
-  border-radius: 8px;
-  text-align: center;
+const MapContainerStyled = styled(MapContainer)`
+  height: 400px;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+  margin: 2rem 0;
 `;
 
-const LoadingMessage = styled.p`
-  font-size: clamp(0.9rem, 2vw, 1rem);
-  color: ${({ theme }) => theme.text || '#2d3748'};
-  text-align: center;
+const QRWrapper = styled.div`
+  background: white;
+  padding: 1rem;
+  border-radius: 16px;
+  display: inline-block;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.1);
 `;
+
+const pageVariants = { initial: { opacity: 0, y: 50 }, animate: { opacity: 1, y: 0 }, exit: { opacity: 0, y: -50 } };
 
 const CatchDetails = () => {
   const { t } = useTranslation();
-  const { id: catchId } = useParams();
+  const { catchId } = useParams();
   const navigate = useNavigate();
-  const { getCatchById, user, isOnline } = useAuth();
+  const { user, isOnline, api } = useContext(AuthContext);
   const { theme } = useContext(ThemeContext);
+
+  const componentRef = useRef<HTMLDivElement>(null);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
+
+  const handlePrint = useReactToPrint({
+    content: () => componentRef.current,
+    documentTitle: `FishKE_Catch_${catchId}`,
+  });
 
   const { data: catchData, isLoading, error } = useQuery({
     queryKey: ['catch', catchId],
     queryFn: async () => {
-      if (!isOnline) throw new Error(t('DetailsErrorsOffline', 'You are offline. Please connect to the internet.'));
-      if (!user) throw new Error(t('DetailsErrorsUnauthenticated', 'You must be logged in'));
-      if (!getCatchById) throw new Error('getCatchById function is not available');
-      console.log('[CatchDetails] Fetching catch with ID:', catchId);
-      const response = await getCatchById(catchId);
-      console.log('[CatchDetails] Catch Response:', response);
-      const data = response.data || response || {};
-      return {
-        catch_id: parseInt(data.catch_id, 10) || parseInt(catchId, 10),
-        batch_id: data.batch_id || 'N/A',
-        user_id: String(data.user_id || user.id),
-        species: data.species || 'Unknown',
-        drying_method: data.drying_method || 'N/A',
-        batch_size: Number(data.batch_size) || 0,
-        weight: Number(data.weight) || 0,
-        harvest_date: data.harvest_date || 'N/A',
-        lat: Number(data.lat) || 0,
-        lng: Number(data.lng) || 0,
-        shelf_life: Number(data.shelf_life) || 0,
-        price: Number(data.price) || 0,
-        image_urls: Array.isArray(data.image_urls) ? data.image_urls : ['/assets/fallback-fish.jpg'],
-        quality_score: Number(data.quality_score) || 0,
-        status: data.status || 'pending',
-        created_at: data.created_at || new Date().toISOString(),
-        updated_at: data.updated_at || new Date().toISOString(),
-      };
+      if (!isOnline) throw new Error("Offline – cannot load details");
+      const { data } = await api.get(`/catch-logs/${catchId}`);
+      return data;
     },
-    enabled: !!user && !!catchId && isOnline && !!getCatchById,
-    retry: 1,
-    staleTime: 5 * 60 * 1000,
-    onError: (err) => {
-      console.error('[CatchDetails] Fetch catch error:', {
-        message: err.message,
-        status: err.response?.status,
-        data: err.response?.data,
-        catchId,
-      });
-      Sentry.captureException(err, { extra: { component: 'CatchDetails', catchId } });
-    },
+    enabled: !!user && !!catchId,
   });
 
-  if (isLoading) {
-    return (
-      <DetailsWrapper theme={theme}>
-        <DetailsCard>
-          <LoadingMessage>{t('DetailsLoading', 'Loading catch details...')}</LoadingMessage>
-        </DetailsCard>
-      </DetailsWrapper>
-    );
+  const { data: blockchainData } = useQuery({
+    queryKey: ['blockchain', catchId],
+    queryFn: async () => {
+      const { data } = await api.get(`/blockchain/catch/${catchId}`);
+      return data;
+    },
+    enabled: !!catchData && isOnline,
+  });
+
+  // WhatsApp share (NOW SAFE – only runs when catchData exists)
+  const handleWhatsApp = () => {
+    if (!catchData) return;
+    const msg = `*FISHKE CATCH CERTIFICATE*\n\n` +
+      `Species: ${catchData.species}\n` +
+      `Weight: ${catchData.weight} kg\n` +
+      `Price: KES ${catchData.price}\n` +
+      `Catch ID: ${catchData.catch_id}\n\n` +
+      `View full: ${window.location.href}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+  };
+
+  if (!user || user.role !== 'fisherman') {
+    return <DetailsWrapper theme={theme}><h2 style={{textAlign: 'center', color: 'red'}}>Access Denied – Fishermen Only</h2></DetailsWrapper>;
   }
 
-  if (error || !catchData || catchData.catch_id === 0) {
-    return (
-      <DetailsWrapper theme={theme}>
-        <DetailsCard>
-          <BackButton
-            onClick={() => navigate('/fisherman-dashboard')}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            theme={theme}
-          >
-            <FontAwesomeIcon icon={faArrowLeft} /> {t('DetailsBack', 'Back to Dashboard')}
-          </BackButton>
-          <ErrorMessage
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            role="alert"
-            aria-live="assertive"
-          >
-            {error?.message || t('DetailsErrorsNotFound', 'Catch not found or an error occurred')}
-          </ErrorMessage>
-        </DetailsCard>
-      </DetailsWrapper>
-    );
-  }
+  if (isLoading) return <DetailsWrapper theme={theme}><p style={{textAlign: 'center', fontSize: '1.5rem'}}>Loading catch details...</p></DetailsWrapper>;
+  if (error || !catchData) return <DetailsWrapper theme={theme}><p style={{textAlign: 'center', color: 'red'}}>Catch not found or offline</p></DetailsWrapper>;
 
   return (
-    <DetailsWrapper theme={theme}>
-      <DetailsCard
-        initial={{ opacity: 0, y: 50 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-      >
-        <BackButton
-          onClick={() => navigate('/fisherman-dashboard')}
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          theme={theme}
-        >
-          <FontAwesomeIcon icon={faArrowLeft} /> {t('DetailsBack', 'Back to Dashboard')}
-        </BackButton>
-        <Title>{t('DetailsTitle', 'Catch Details')}</Title>
-        <DetailItem><strong>{t('DetailsCatchId', 'Catch ID')}:</strong> {catchData.catch_id}</DetailItem>
-        <DetailItem><strong>{t('DetailsBatchId', 'Batch ID')}:</strong> {catchData.batch_id}</DetailItem>
-        <DetailItem><strong>{t('DetailsSpecies', 'Species')}:</strong> {catchData.species}</DetailItem>
-        <DetailItem><strong>{t('DetailsDryingMethod', 'Drying Method')}:</strong> {catchData.drying_method}</DetailItem>
-        <DetailItem><strong>{t('DetailsBatchSize', 'Batch Size (kg)')}:</strong> {catchData.batch_size}</DetailItem>
-        <DetailItem><strong>{t('DetailsWeight', 'Weight (kg)')}:</strong> {catchData.weight}</DetailItem>
-        <DetailItem><strong>{t('DetailsHarvestDate', 'Harvest Date')}:</strong> {catchData.harvest_date}</DetailItem>
-        <DetailItem><strong>{t('DetailsLocation', 'Location')}:</strong> {catchData.lat}, {catchData.lng}</DetailItem>
-        <DetailItem><strong>{t('DetailsShelfLife', 'Shelf Life (days)')}:</strong> {catchData.shelf_life}</DetailItem>
-        <DetailItem><strong>{t('DetailsPrice', 'Price (USD)')}:</strong> {catchData.price}</DetailItem>
-        <DetailItem><strong>{t('DetailsQualityScore', 'Quality Score')}:</strong> {catchData.quality_score.toFixed(2)}</DetailItem>
-        <DetailItem><strong>{t('DetailsStatus', 'Status')}:</strong> {catchData.status}</DetailItem>
-        <DetailItem><strong>{t('DetailsCreatedAt', 'Created At')}:</strong> {new Date(catchData.created_at).toLocaleString()}</DetailItem>
-        <DetailItem><strong>{t('DetailsUpdatedAt', 'Updated At')}:</strong> {new Date(catchData.updated_at).toLocaleString()}</DetailItem>
-        {catchData.image_urls && catchData.image_urls.length > 0 && (
-          <>
-            <DetailItem><strong>{t('DetailsImages', 'Images')}:</strong></DetailItem>
-            <ImageGallery>
-              {catchData.image_urls.map((url, index) => (
-                <CatchImage
-                  key={index}
-                  src={url}
-                  alt={`${t('DetailsImageAlt', 'Catch image')} ${index + 1}`}
-                  onError={(e) => (e.target.src = '/assets/fallback-fish.jpg')}
-                />
-              ))}
-            </ImageGallery>
-          </>
-        )}
-      </DetailsCard>
-    </DetailsWrapper>
+    <StyleSheetManager shouldForwardProp={isPropValid}>
+      <AnimatePresence>
+        <motion.div variants={pageVariants} initial="initial" animate="animate" exit="exit">
+          <DetailsWrapper theme={theme}>
+            <div ref={componentRef}>
+              <DetailsCard>
+                <Header>
+                  <Title>{catchData.species} • {catchData.weight}kg</Title>
+                  <div style={{display: 'flex', gap: '1rem', flexWrap: 'wrap'}}>
+                    <ActionButton onClick={() => navigate(-1)} whileHover={{scale: 1.05}} whileTap={{scale: 0.95}}>
+                      <FontAwesomeIcon icon={faArrowLeft} /> Back
+                    </ActionButton>
+                    <ActionButton onClick={handlePrint} whileHover={{scale: 1.05}} whileTap={{scale: 0.95}}>
+                      <FontAwesomeIcon icon={faPrint} /> Print
+                    </ActionButton>
+                    <ActionButton onClick={handleWhatsApp} whileHover={{scale: 1.05}} whileTap={{scale: 0.95}}>
+                      <FontAwesomeIcon icon={faShareAlt} /> Share
+                    </ActionButton>
+                  </div>
+                </Header>
+
+                <DetailGrid>
+                  <DetailItem><p><strong>Catch ID:</strong> {catchData.catch_id}</p></DetailItem>
+                  <DetailItem><p><strong>Date:</strong> {new Date(catchData.harvest_date).toLocaleDateString('sw-KE')}</p></DetailItem>
+                  <DetailItem><p><strong>Price:</strong> KES {Number(catchData.price).toLocaleString()}</p></DetailItem>
+                  <DetailItem><p><strong>Status:</strong> <span style={{color: catchData.status === 'sold' ? 'green' : '#f59e0b', fontWeight: 'bold'}}>{catchData.status.toUpperCase()}</span></p></DetailItem>
+                  <DetailItem><p><strong>Drying:</strong> {catchData.drying_method}</p></DetailItem>
+                  <DetailItem><p><strong>Shelf Life:</strong> {catchData.shelf_life} days</p></DetailItem>
+                </DetailGrid>
+
+                {catchData.image_urls?.length > 0 && (
+                  <ImageGallery>
+                    {catchData.image_urls.map((url, i) => (
+                      <Image
+                        key={i}
+                        src={url}
+                        alt={`Catch photo ${i + 1}`}
+                        onClick={() => { setLightboxIndex(i); setLightboxOpen(true); }}
+                      />
+                    ))}
+                  </ImageGallery>
+                )}
+
+                {catchData.lat && catchData.lng && (
+                  <MapContainerStyled center={[catchData.lat, catchData.lng]} zoom={13}>
+                    <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                    <Marker position={[catchData.lat, catchData.lng]}>
+                      <Popup>{catchData.species} • {catchData.weight}kg</Popup>
+                    </Marker>
+                  </MapContainerStyled>
+                )}
+
+                {blockchainData?.transactionHash && (
+                  <div style={{textAlign: 'center', margin: '2rem 0'}}>
+                    <p><strong>On-Chain Verified</strong></p>
+                    <a href={`https://sepolia.etherscan.io/tx/${blockchainData.transactionHash}`} target="_blank" rel="noreferrer">
+                      View Transaction
+                    </a>
+                    <QRWrapper>
+                      <QRCode value={`https://sepolia.etherscan.io/tx/${blockchainData.transactionHash}`} size={120} />
+                    </QRWrapper>
+                  </div>
+                )}
+              </DetailsCard>
+            </div>
+
+            <FsLightbox
+              toggler={lightboxOpen}
+              sources={catchData.image_urls || []}
+              slide={lightboxIndex + 1}
+            />
+          </DetailsWrapper>
+        </motion.div>
+      </AnimatePresence>
+    </StyleSheetManager>
   );
 };
 

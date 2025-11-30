@@ -1,4 +1,0 @@
- catch_id | user_id | species | drying_method | batch_size | weight | harvest_date | location | shelf_life | price | image_urls | quality_score | status | blockchain_transaction_hash | blockchain_block_number | created_at | updated_at | lat | lng 
-----------+---------+---------+---------------+------------+--------+--------------+----------+------------+-------+------------+---------------+--------+-----------------------------+-------------------------+------------+------------+-----+-----
-(0 rows)
-

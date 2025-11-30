@@ -45,6 +45,9 @@
   "dependencies": {
     "express": "^5.1.0",
     "fabric-ca-client": "^2.2.20",
-    "fabric-network": "^2.2.20"
+    "fabric-network": "^2.2.20",
+    "fslightbox-react": "^2.0.0",
+    "react-qr-code": "^2.0.18",
+    "react-to-print": "^3.2.0"
   }
 }
